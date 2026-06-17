@@ -1,0 +1,16 @@
+{
+  "extensionName": { "message": "कस्टम ऑटो रिफ्रेश" },
+  "extensionShortName": { "message": "ऑटो रिफ्रेश" },
+  "extensionDescription": { "message": "वर्तमान टैब को चुने गए अंतराल पर रीफ्रेश करें।" },
+  "actionTitle": { "message": "कस्टम ऑटो रिफ्रेश" },
+  "intervalLabel": { "message": "अंतराल" },
+  "secondsUnit": { "message": "सेकंड" },
+  "start": { "message": "शुरू करें" },
+  "stop": { "message": "रोकें" },
+  "active": { "message": "रीफ्रेश हो रहा है" },
+  "idle": { "message": "निष्क्रिय" },
+  "nextRefresh": { "message": "अगला रीफ्रेश" },
+  "cannotRefresh": { "message": "एक्सटेंशन इस पेज को रीफ्रेश नहीं कर सकता।" },
+  "invalidInterval": { "message": "0 से 604800 सेकंड तक की संख्या दर्ज करें।" },
+  "sourceCode": { "message": "स्रोत कोड" }
+}

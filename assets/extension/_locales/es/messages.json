@@ -1,0 +1,16 @@
+{
+  "extensionName": { "message": "Actualización automática personalizada" },
+  "extensionShortName": { "message": "Auto actualizar" },
+  "extensionDescription": { "message": "Actualiza la pestaña actual en un intervalo personalizado." },
+  "actionTitle": { "message": "Actualización automática personalizada" },
+  "intervalLabel": { "message": "Intervalo" },
+  "secondsUnit": { "message": "seg" },
+  "start": { "message": "Iniciar" },
+  "stop": { "message": "Detener" },
+  "active": { "message": "Actualizando" },
+  "idle": { "message": "Inactivo" },
+  "nextRefresh": { "message": "Próxima actualización" },
+  "cannotRefresh": { "message": "La extensión no puede actualizar esta página." },
+  "invalidInterval": { "message": "Introduce un número entre 0 y 604800 segundos." },
+  "sourceCode": { "message": "Código fuente" }
+}

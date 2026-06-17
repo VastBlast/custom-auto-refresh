@@ -1,0 +1,86 @@
+name: Release Assets
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build and upload extension zips
+    runs-on: ubuntu-latest
+    env:
+      TAG_NAME: ${{ github.ref_name }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply tag version
+        shell: bash
+        run: |
+          version="${TAG_NAME#v}"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Tag must use vX.Y.Z format." >&2
+            exit 1
+          fi
+
+          npm version "$version" --no-git-tag-version --allow-same-version
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+
+      - name: Check
+        run: npm run check
+
+      - name: Test
+        run: npm run test
+
+      - name: Build
+        run: npm run build
+
+      - name: Verify manifest versions
+        shell: bash
+        run: |
+          node - <<'NODE'
+          const { readFileSync } = require('node:fs');
+
+          for (const target of ['chrome', 'edge', 'firefox']) {
+            const manifest = JSON.parse(readFileSync(`dist/${target}/manifest.json`, 'utf8'));
+            if (manifest.version !== process.env.VERSION) {
+              throw new Error(`${target} manifest version ${manifest.version} does not match ${process.env.VERSION}`);
+            }
+          }
+          NODE
+
+      - name: Package extension zips
+        run: node scripts/package-extension.mjs
+
+      - name: Create release and upload assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          if gh release view "$TAG_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG_NAME" artifacts/*.zip --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$TAG_NAME" artifacts/*.zip \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "$TAG_NAME" \
+              --generate-notes \
+              --verify-tag
+          fi

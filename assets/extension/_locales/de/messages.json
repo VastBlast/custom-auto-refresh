@@ -1,0 +1,16 @@
+{
+  "extensionName": { "message": "Benutzerdefinierte automatische Aktualisierung" },
+  "extensionShortName": { "message": "Auto Refresh" },
+  "extensionDescription": { "message": "Aktualisiert den aktuellen Tab in einem benutzerdefinierten Intervall." },
+  "actionTitle": { "message": "Benutzerdefinierte automatische Aktualisierung" },
+  "intervalLabel": { "message": "Intervall" },
+  "secondsUnit": { "message": "Sek." },
+  "start": { "message": "Start" },
+  "stop": { "message": "Stopp" },
+  "active": { "message": "Aktualisiert" },
+  "idle": { "message": "Bereit" },
+  "nextRefresh": { "message": "Nächste Aktualisierung" },
+  "cannotRefresh": { "message": "Diese Seite kann von der Erweiterung nicht aktualisiert werden." },
+  "invalidInterval": { "message": "Gib eine Zahl zwischen 0 und 604800 Sekunden ein." },
+  "sourceCode": { "message": "Quellcode" }
+}

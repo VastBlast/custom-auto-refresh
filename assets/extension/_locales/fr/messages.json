@@ -1,0 +1,16 @@
+{
+  "extensionName": { "message": "Actualisation automatique personnalisée" },
+  "extensionShortName": { "message": "Auto Refresh" },
+  "extensionDescription": { "message": "Actualisez l'onglet actif selon un intervalle personnalisé." },
+  "actionTitle": { "message": "Actualisation automatique personnalisée" },
+  "intervalLabel": { "message": "Intervalle" },
+  "secondsUnit": { "message": "s" },
+  "start": { "message": "Démarrer" },
+  "stop": { "message": "Arrêter" },
+  "active": { "message": "Actualisation" },
+  "idle": { "message": "Inactif" },
+  "nextRefresh": { "message": "Prochaine actualisation" },
+  "cannotRefresh": { "message": "Cette page ne peut pas être actualisée par l'extension." },
+  "invalidInterval": { "message": "Saisissez un nombre entre 0 et 604800 secondes." },
+  "sourceCode": { "message": "Code source" }
+}

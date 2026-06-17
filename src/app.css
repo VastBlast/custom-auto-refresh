@@ -1,0 +1,63 @@
+@import "tailwindcss";
+@plugin "daisyui" {
+  themes: refresh --default;
+  include: button, input, badge, status, alert, tooltip;
+  logs: false;
+}
+@plugin "daisyui/theme" {
+  name: "refresh";
+  default: true;
+  prefersdark: false;
+  color-scheme: light;
+
+  --color-base-100: oklch(98% 0.012 118);
+  --color-base-200: oklch(94% 0.018 118);
+  --color-base-300: oklch(88% 0.018 118);
+  --color-base-content: oklch(22% 0.025 145);
+  --color-primary: oklch(47% 0.13 151);
+  --color-primary-content: oklch(98% 0.012 118);
+  --color-secondary: oklch(43% 0.058 250);
+  --color-secondary-content: oklch(98% 0.01 250);
+  --color-accent: oklch(61% 0.145 58);
+  --color-accent-content: oklch(19% 0.04 58);
+  --color-neutral: oklch(27% 0.028 145);
+  --color-neutral-content: oklch(96% 0.012 118);
+  --color-info: oklch(58% 0.12 234);
+  --color-info-content: oklch(98% 0.01 234);
+  --color-success: oklch(52% 0.135 151);
+  --color-success-content: oklch(98% 0.012 118);
+  --color-warning: oklch(72% 0.145 75);
+  --color-warning-content: oklch(22% 0.04 75);
+  --color-error: oklch(55% 0.16 29);
+  --color-error-content: oklch(98% 0.012 29);
+
+  --radius-selector: 0.5rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.5rem;
+  --size-selector: 0.21875rem;
+  --size-field: 0.21875rem;
+  --border: 1px;
+  --depth: 1;
+  --noise: 0;
+}
+
+@layer base {
+  :root {
+    color-scheme: light;
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 14px;
+    line-height: 1.35;
+  }
+
+  html,
+  body,
+  #app {
+    min-width: 312px;
+    min-height: 198px;
+    margin: 0;
+  }
+
+  body {
+    overflow: hidden;
+  }
+}
