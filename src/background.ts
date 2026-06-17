@@ -81,7 +81,11 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     void stopTab(tabId);
     return;
   }
-  if (tab.status === 'complete') {
+
+  if (changeInfo.url || changeInfo.status === 'loading' || changeInfo.status === 'complete') {
+    actionStates.delete(tabId);
+  }
+  if (changeInfo.status === 'loading' || changeInfo.status === 'complete' || tab.status === 'complete') {
     void updateAction(tabId);
   }
 });
