@@ -186,8 +186,7 @@ async function runTick(): Promise<void> {
   // running, for example if a tab becomes unrefreshable during reload.
   for (const job of [...jobs.values()]) {
     if (!job.refreshing && job.nextRefreshAt <= now) {
-      await updateAction(job.tabId);
-      await refreshTab(job);
+      void refreshTab(job).catch(() => undefined);
     } else {
       await updateAction(job.tabId);
     }
@@ -199,6 +198,7 @@ async function runTick(): Promise<void> {
 async function refreshTab(job: RefreshJob): Promise<void> {
   job.refreshing = true;
   try {
+    await updateAction(job.tabId);
     const tab = await getTab(job.tabId);
     if (!tab || !isRefreshableUrl(tab.url)) {
       await stopTab(job.tabId);
@@ -232,6 +232,9 @@ function scheduleTick(): void {
   const now = Date.now();
   let nextDelay = 1000;
   for (const job of jobs.values()) {
+    if (job.refreshing) {
+      continue;
+    }
     nextDelay = Math.min(nextDelay, job.nextRefreshAt - now);
   }
   nextDelay = Math.max(0, Math.min(1000, nextDelay));
