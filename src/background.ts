@@ -30,6 +30,12 @@ interface ActionState {
 const ACTION_ICON_SIZES = [16, 24, 32] as const;
 const STORAGE_KEY = 'customAutoRefresh';
 const KEEP_ALIVE_PORT = 'custom-auto-refresh:keepAlive';
+const REFRESH_ICON_PATHS = [
+  'M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8',
+  'M3 3v5h5',
+  'M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16',
+  'M16 16h5v5'
+];
 const REFRESH_SETTLE_TIMEOUT_MS = 60000;
 const REFRESH_SETTLE_POLL_MS = 250;
 const REFRESH_COMPLETE_GRACE_MS = 750;
@@ -343,55 +349,22 @@ function createActionIconImageData(icon: IconState, size: number): ImageData {
     throw new Error('Could not create action icon.');
   }
 
-  const scale = size / 32;
-  context.scale(scale, scale);
-  drawRoundedRect(context, 1, 1, 30, 30, 8, icon === 'active' ? '#187246' : '#2d3832');
+  context.scale(size / 32, size / 32);
+  context.fillStyle = icon === 'active' ? '#e74c3c' : '#344e5d';
+  context.beginPath();
+  context.arc(16, 16, 16, 0, Math.PI * 2);
+  context.fill();
 
-  context.strokeStyle = '#f8fff9';
+  context.translate(4, 4);
+  context.strokeStyle = '#ffffff';
+  context.lineWidth = 2.75;
   context.lineCap = 'round';
   context.lineJoin = 'round';
-  context.lineWidth = 3.4;
-
-  context.beginPath();
-  context.arc(16, 17, 8, 0.68 * Math.PI, 1.88 * Math.PI);
-  context.stroke();
-
-  context.beginPath();
-  context.moveTo(22, 7);
-  context.lineTo(27, 7);
-  context.lineTo(27, 12);
-  context.stroke();
-
-  context.beginPath();
-  context.moveTo(16, 12);
-  context.lineTo(16, 18);
-  context.lineTo(21, 21);
-  context.stroke();
+  for (const path of REFRESH_ICON_PATHS) {
+    context.stroke(new Path2D(path));
+  }
 
   return context.getImageData(0, 0, size, size);
-}
-
-function drawRoundedRect(
-  context: OffscreenCanvasRenderingContext2D,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  radius: number,
-  fill: string
-): void {
-  context.fillStyle = fill;
-  context.beginPath();
-  context.moveTo(x + radius, y);
-  context.lineTo(x + width - radius, y);
-  context.quadraticCurveTo(x + width, y, x + width, y + radius);
-  context.lineTo(x + width, y + height - radius);
-  context.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-  context.lineTo(x + radius, y + height);
-  context.quadraticCurveTo(x, y + height, x, y + height - radius);
-  context.lineTo(x, y + radius);
-  context.quadraticCurveTo(x, y, x + radius, y);
-  context.fill();
 }
 
 async function connectKeepAlive(tabId?: number): Promise<void> {
