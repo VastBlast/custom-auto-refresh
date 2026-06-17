@@ -30,6 +30,9 @@ interface ActionState {
 const ACTION_ICON_SIZES = [16, 24, 32] as const;
 const STORAGE_KEY = 'customAutoRefresh';
 const KEEP_ALIVE_PORT = 'custom-auto-refresh:keepAlive';
+const REFRESH_SETTLE_TIMEOUT_MS = 60000;
+const REFRESH_SETTLE_POLL_MS = 250;
+const REFRESH_COMPLETE_GRACE_MS = 750;
 
 // Jobs are held in memory for fast ticking and mirrored to storage so MV3
 // service-worker restarts can resume active refreshes.
@@ -80,6 +83,7 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   }
   jobs.delete(tabId);
   actionStates.delete(tabId);
+  rescheduleTick();
   void saveState();
 });
 
@@ -87,14 +91,10 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (!jobs.has(tabId)) {
     return;
   }
-  if (changeInfo.url && !isRefreshableUrl(changeInfo.url)) {
-    void stopTab(tabId);
-    return;
-  }
 
   // Navigation can clear the toolbar icon even though our in-memory job stays
   // active, so force the next update to rewrite the action state.
-  if (changeInfo.url || changeInfo.status === 'loading' || changeInfo.status === 'complete') {
+  if (changeInfo.status === 'loading' || changeInfo.status === 'complete') {
     actionStates.delete(tabId);
   }
   if (changeInfo.status === 'loading' || changeInfo.status === 'complete' || tab.status === 'complete') {
@@ -115,7 +115,7 @@ async function initialize(): Promise<void> {
         jobs.set(job.tabId, { ...job, refreshing: false });
       }
     }
-    await Promise.all([...jobs.keys()].map((tabId) => updateAction(tabId)));
+    await Promise.all(Array.from(jobs.keys(), (tabId) => updateAction(tabId)));
     scheduleTick();
     if (jobs.size > 0) {
       await connectKeepAlive();
@@ -140,7 +140,7 @@ async function handleMessage(message: RefreshRequest): Promise<RefreshState> {
 
 async function startActiveTab(intervalSeconds: number): Promise<RefreshState> {
   const tab = await getActiveTab();
-  if (!tab?.id || !isRefreshableUrl(tab.url)) {
+  if (!tab?.id) {
     throw new Error('This page cannot be refreshed by the extension.');
   }
 
@@ -154,7 +154,7 @@ async function startActiveTab(intervalSeconds: number): Promise<RefreshState> {
   lastIntervals[String(tab.id)] = intervalMs;
   await saveState();
   await updateAction(tab.id);
-  scheduleTick();
+  rescheduleTick();
   void connectKeepAlive(tab.id);
   return getStateForTab(tab);
 }
@@ -175,6 +175,7 @@ async function stopTab(tabId: number): Promise<void> {
   }
   await saveState();
   await setInactiveAction(tabId);
+  rescheduleTick();
 }
 
 async function runTick(): Promise<void> {
@@ -182,9 +183,7 @@ async function runTick(): Promise<void> {
   await initialize();
   const now = Date.now();
 
-  // Iterate over a snapshot so jobs can be stopped safely while the tick is
-  // running, for example if a tab becomes unrefreshable during reload.
-  for (const job of [...jobs.values()]) {
+  for (const job of jobs.values()) {
     if (!job.refreshing && job.nextRefreshAt <= now) {
       void refreshTab(job).catch(() => undefined);
     } else {
@@ -200,17 +199,15 @@ async function refreshTab(job: RefreshJob): Promise<void> {
   try {
     await updateAction(job.tabId);
     const tab = await getTab(job.tabId);
-    if (!tab || !isRefreshableUrl(tab.url)) {
+    if (!tab) {
       await stopTab(job.tabId);
       return;
     }
 
-    // Register the completion listener before reloading so fast local pages
-    // cannot complete before we start waiting.
-    const complete = waitForTabComplete(job.tabId);
-    await reloadTab(job.tabId);
-    await complete;
-    job.nextRefreshAt = Date.now() + job.intervalMs;
+    await reloadAndWaitForTabSettled(job.tabId);
+    if (jobs.has(job.tabId)) {
+      job.nextRefreshAt = Date.now() + job.intervalMs;
+    }
   } catch {
     await stopTab(job.tabId);
   } finally {
@@ -218,6 +215,7 @@ async function refreshTab(job: RefreshJob): Promise<void> {
     if (current) {
       current.refreshing = false;
       await updateAction(job.tabId);
+      rescheduleTick();
     }
   }
 }
@@ -241,6 +239,14 @@ function scheduleTick(): void {
   scheduler = setTimeout(() => void runTick(), nextDelay);
 }
 
+function rescheduleTick(): void {
+  if (scheduler) {
+    clearTimeout(scheduler);
+    scheduler = undefined;
+  }
+  scheduleTick();
+}
+
 async function getActiveTabState(): Promise<RefreshState> {
   const tab = await getActiveTab();
   return getStateForTab(tab);
@@ -253,7 +259,7 @@ function getStateForTab(tab: chrome.tabs.Tab | undefined): RefreshState {
   const intervalMs = job?.intervalMs ?? fallbackMs ?? DEFAULT_INTERVAL_SECONDS * 1000;
 
   return {
-    canRefresh: Boolean(tabId && isRefreshableUrl(tab?.url)),
+    canRefresh: Boolean(tabId),
     isRefreshing: Boolean(job),
     intervalSeconds: intervalMs / 1000,
     remainingMs: job ? Math.max(0, job.nextRefreshAt - Date.now()) : null,
@@ -371,7 +377,7 @@ function drawRoundedRect(
 }
 
 async function connectKeepAlive(tabId?: number): Promise<void> {
-  const tabIds = tabId === undefined ? [...jobs.keys()] : jobs.has(tabId) ? [tabId] : [];
+  const tabIds = tabId === undefined ? Array.from(jobs.keys()) : jobs.has(tabId) ? [tabId] : [];
   const jobTabs = await Promise.all(tabIds.map((id) => getTab(id)));
   if (await connectToFirstAvailableTab(jobTabs)) {
     return;
@@ -379,13 +385,13 @@ async function connectKeepAlive(tabId?: number): Promise<void> {
 
   // Some refresh targets reject script injection. A fallback HTTP(S) tab can
   // still hold the keep-alive port; refresh jobs themselves remain tab-scoped.
-  const fallbackTabs = await queryRefreshableTabs();
+  const fallbackTabs = await queryInjectableTabs();
   await connectToFirstAvailableTab(fallbackTabs);
 }
 
 async function connectToFirstAvailableTab(tabs: Array<chrome.tabs.Tab | undefined>): Promise<boolean> {
   for (const tab of tabs) {
-    if (tab?.id === undefined || !isRefreshableUrl(tab.url)) {
+    if (tab?.id === undefined) {
       continue;
     }
     if (await injectKeepAlive(tab.id)) {
@@ -425,7 +431,7 @@ function getTab(tabId: number): Promise<chrome.tabs.Tab | undefined> {
   return chromeCall<chrome.tabs.Tab>((resolve) => chrome.tabs.get(tabId, resolve)).catch(() => undefined);
 }
 
-function queryRefreshableTabs(): Promise<chrome.tabs.Tab[]> {
+function queryInjectableTabs(): Promise<chrome.tabs.Tab[]> {
   return chromeCall((resolve) => chrome.tabs.query({ url: ['http://*/*', 'https://*/*'] }, resolve));
 }
 
@@ -433,25 +439,72 @@ function reloadTab(tabId: number): Promise<void> {
   return chromeCall((resolve) => chrome.tabs.reload(tabId, resolve));
 }
 
-function waitForTabComplete(tabId: number): Promise<void> {
-  return new Promise((resolve) => {
-    // Do not hang forever on pages that never report complete.
-    const timeout = setTimeout(done, 60000);
+async function reloadAndWaitForTabSettled(tabId: number): Promise<void> {
+  let armed = false;
+  let armedAt = 0;
+  let sawLoading = false;
+  let settled = false;
+  let resolveSettled = (): void => undefined;
 
-    function listener(updatedTabId: number, changeInfo: { status?: string }): void {
-      if (updatedTabId === tabId && changeInfo.status === 'complete') {
-        done();
-      }
-    }
-
-    function done(): void {
-      clearTimeout(timeout);
-      chrome.tabs.onUpdated.removeListener(listener);
-      resolve();
-    }
-
-    chrome.tabs.onUpdated.addListener(listener);
+  const settledPromise = new Promise<void>((resolve) => {
+    resolveSettled = resolve;
   });
+  const timeout = setTimeout(done, REFRESH_SETTLE_TIMEOUT_MS);
+  const poll = setInterval(() => void checkTabStatus(), REFRESH_SETTLE_POLL_MS);
+
+  function listener(updatedTabId: number, changeInfo: { status?: string }): void {
+    if (updatedTabId !== tabId) {
+      return;
+    }
+    if (changeInfo.status === 'loading') {
+      sawLoading = true;
+    }
+    if (armed && changeInfo.status === 'complete') {
+      done();
+    }
+  }
+
+  async function checkTabStatus(): Promise<void> {
+    if (!armed || settled) {
+      return;
+    }
+
+    const tab = await getTab(tabId);
+    if (!tab || !jobs.has(tabId)) {
+      done();
+      return;
+    }
+    if (tab.status === 'loading') {
+      sawLoading = true;
+      return;
+    }
+    if (tab.status === 'complete' && (sawLoading || Date.now() - armedAt >= REFRESH_COMPLETE_GRACE_MS)) {
+      done();
+    }
+  }
+
+  function done(): void {
+    if (settled) {
+      return;
+    }
+    settled = true;
+    clearTimeout(timeout);
+    clearInterval(poll);
+    chrome.tabs.onUpdated.removeListener(listener);
+    resolveSettled();
+  }
+
+  chrome.tabs.onUpdated.addListener(listener);
+  try {
+    await reloadTab(tabId);
+    armed = true;
+    armedAt = Date.now();
+    void checkTabStatus();
+    await settledPromise;
+  } catch (error) {
+    done();
+    throw error;
+  }
 }
 
 async function readStoredState(): Promise<StoredState> {
@@ -463,7 +516,7 @@ async function readStoredState(): Promise<StoredState> {
 
 async function saveState(): Promise<void> {
   const stored: StoredState = {
-    jobs: [...jobs.values()].map(({ tabId, intervalMs, nextRefreshAt }) => ({
+    jobs: Array.from(jobs.values(), ({ tabId, intervalMs, nextRefreshAt }) => ({
       tabId,
       intervalMs,
       nextRefreshAt
@@ -505,8 +558,4 @@ function chromeCall<T>(action: (resolve: (value: T) => void) => void): Promise<T
       }
     });
   });
-}
-
-function isRefreshableUrl(url: string | undefined): boolean {
-  return /^https?:\/\//i.test(url ?? '');
 }
