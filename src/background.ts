@@ -47,7 +47,7 @@ let lastIntervals: Record<string, number> = {};
 let scheduler: ReturnType<typeof setTimeout> | undefined;
 let initialized: Promise<void> | undefined;
 
-void initialize();
+runQuietly(initialize());
 
 chrome.runtime.onMessage.addListener((message: RefreshRequest, _sender, sendResponse) => {
   void handleMessage(message)
@@ -72,7 +72,7 @@ chrome.runtime.onConnect.addListener((port) => {
   port.onDisconnect.addListener(() => {
     clearTimeout(timer);
     if (jobs.size > 0) {
-      void connectKeepAlive(tabId);
+      runQuietly(connectKeepAlive(tabId));
     }
   });
 });
@@ -81,10 +81,7 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   if (!jobs.has(tabId)) {
     return;
   }
-  jobs.delete(tabId);
-  actionStates.delete(tabId);
-  rescheduleTick();
-  void saveState();
+  runQuietly(forgetTab(tabId));
 });
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
@@ -98,10 +95,10 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     actionStates.delete(tabId);
   }
   if (changeInfo.status === 'loading' || changeInfo.status === 'complete' || tab.status === 'complete') {
-    void updateAction(tabId);
+    runQuietly(updateAction(tabId));
   }
   if (changeInfo.status === 'complete') {
-    void connectKeepAlive(tabId);
+    runQuietly(connectKeepAlive(tabId));
   }
 });
 
@@ -155,7 +152,7 @@ async function startActiveTab(intervalSeconds: number): Promise<RefreshState> {
   await saveState();
   await updateAction(tab.id);
   rescheduleTick();
-  void connectKeepAlive(tab.id);
+  runQuietly(connectKeepAlive(tab.id));
   return getStateForTab(tab);
 }
 
@@ -168,13 +165,18 @@ async function stopActiveTab(): Promise<RefreshState> {
 }
 
 async function stopTab(tabId: number): Promise<void> {
+  await forgetTab(tabId);
+  await setInactiveAction(tabId);
+}
+
+async function forgetTab(tabId: number): Promise<void> {
   const job = jobs.get(tabId);
   if (job) {
     lastIntervals[String(tabId)] = job.intervalMs;
     jobs.delete(tabId);
   }
+  actionStates.delete(tabId);
   await saveState();
-  await setInactiveAction(tabId);
   rescheduleTick();
 }
 
@@ -185,7 +187,7 @@ async function runTick(): Promise<void> {
 
   for (const job of jobs.values()) {
     if (!job.refreshing && job.nextRefreshAt <= now) {
-      void refreshTab(job).catch(() => undefined);
+      runQuietly(refreshTab(job));
     } else {
       await updateAction(job.tabId);
     }
@@ -236,7 +238,7 @@ function scheduleTick(): void {
     nextDelay = Math.min(nextDelay, job.nextRefreshAt - now);
   }
   nextDelay = Math.max(0, Math.min(1000, nextDelay));
-  scheduler = setTimeout(() => void runTick(), nextDelay);
+  scheduler = setTimeout(() => runQuietly(runTick()), nextDelay);
 }
 
 function rescheduleTick(): void {
@@ -275,35 +277,51 @@ async function updateAction(tabId: number): Promise<void> {
   }
 
   const remainingMs = Math.max(0, job.nextRefreshAt - Date.now());
-  await setActionState(tabId, 'active', job.refreshing ? '...' : formatBadgeText(remainingMs, job.intervalMs));
+  const updated = await setActionState(
+    tabId,
+    'active',
+    job.refreshing ? '...' : formatBadgeText(remainingMs, job.intervalMs)
+  );
+  if (!updated) {
+    await forgetTab(tabId);
+  }
 }
 
-async function setInactiveAction(tabId: number): Promise<void> {
-  await setActionState(tabId, 'inactive', '');
+async function setInactiveAction(tabId: number): Promise<boolean> {
+  return setActionState(tabId, 'inactive', '');
 }
 
-async function setActionState(tabId: number, icon: IconState, badgeText: string): Promise<void> {
-  const current = actionStates.get(tabId);
-  if (current?.badgeText !== badgeText) {
-    await chromeCall<void>((resolve) => chrome.action.setBadgeText({ tabId, text: badgeText }, resolve));
+async function setActionState(tabId: number, icon: IconState, badgeText: string): Promise<boolean> {
+  try {
+    const current = actionStates.get(tabId);
+    if (current?.badgeText !== badgeText) {
+      await chromeCall<void>((resolve) => chrome.action.setBadgeText({ tabId, text: badgeText }, resolve));
+    }
+    if (icon === 'active' && current?.icon !== 'active') {
+      await chromeCall<void>((resolve) =>
+        chrome.action.setBadgeBackgroundColor({ tabId, color: '#1a7f4b' }, resolve)
+      );
+    }
+    if (current?.icon !== icon) {
+      await chromeCall<void>((resolve) =>
+        chrome.action.setIcon(
+          {
+            tabId,
+            imageData: getActionIconData(icon)
+          },
+          resolve
+        )
+      );
+    }
+    actionStates.set(tabId, { badgeText, icon });
+    return true;
+  } catch (error) {
+    if (isMissingTabError(error)) {
+      actionStates.delete(tabId);
+      return false;
+    }
+    throw error;
   }
-  if (icon === 'active' && current?.icon !== 'active') {
-    await chromeCall<void>((resolve) =>
-      chrome.action.setBadgeBackgroundColor({ tabId, color: '#1a7f4b' }, resolve)
-    );
-  }
-  if (current?.icon !== icon) {
-    await chromeCall<void>((resolve) =>
-      chrome.action.setIcon(
-        {
-          tabId,
-          imageData: getActionIconData(icon)
-        },
-        resolve
-      )
-    );
-  }
-  actionStates.set(tabId, { badgeText, icon });
 }
 
 function getActionIconData(icon: IconState): Record<number, ImageData> {
@@ -450,7 +468,7 @@ async function reloadAndWaitForTabSettled(tabId: number): Promise<void> {
     resolveSettled = resolve;
   });
   const timeout = setTimeout(done, REFRESH_SETTLE_TIMEOUT_MS);
-  const poll = setInterval(() => void checkTabStatus(), REFRESH_SETTLE_POLL_MS);
+  const poll = setInterval(() => runQuietly(checkTabStatus()), REFRESH_SETTLE_POLL_MS);
 
   function listener(updatedTabId: number, changeInfo: { status?: string }): void {
     if (updatedTabId !== tabId) {
@@ -499,7 +517,7 @@ async function reloadAndWaitForTabSettled(tabId: number): Promise<void> {
     await reloadTab(tabId);
     armed = true;
     armedAt = Date.now();
-    void checkTabStatus();
+    runQuietly(checkTabStatus());
     await settledPromise;
   } catch (error) {
     done();
@@ -558,4 +576,12 @@ function chromeCall<T>(action: (resolve: (value: T) => void) => void): Promise<T
       }
     });
   });
+}
+
+function runQuietly(promise: Promise<unknown>): void {
+  void promise.catch(() => undefined);
+}
+
+function isMissingTabError(error: unknown): boolean {
+  return error instanceof Error && /^(No tab with id: \d+\.|Invalid tab ID: \d+\.?)$/i.test(error.message);
 }
