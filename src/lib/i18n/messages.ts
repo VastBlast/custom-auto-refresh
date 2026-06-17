@@ -11,7 +11,7 @@ const fallbackMessages = {
   idle: 'Idle',
   nextRefresh: 'Next refresh',
   cannotRefresh: 'This page cannot be refreshed by the extension.',
-  invalidInterval: 'Enter a number from 0 to 604800 seconds.',
+  invalidInterval: 'Enter a valid refresh interval.',
   sourceCode: 'Source Code'
 } as const;
 

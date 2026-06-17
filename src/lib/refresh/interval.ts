@@ -17,15 +17,29 @@ export function formatIntervalSeconds(seconds: number): string {
   return Number.isInteger(seconds) ? String(seconds) : String(seconds).replace(/0+$/, '').replace(/\.$/, '');
 }
 
+export function formatDurationSeconds(seconds: number | null): string {
+  if (seconds === null) {
+    return '--';
+  }
+  return formatDurationMs(seconds * 1000);
+}
+
 export function formatRemaining(ms: number | null): string {
   if (ms === null) {
     return '--';
   }
+  return formatDurationMs(ms);
+}
+
+function formatDurationMs(ms: number): string {
   if (ms <= 0) {
     return '0s';
   }
+  if (ms < 100) {
+    return `${Math.max(1, Math.round(ms))}ms`;
+  }
   if (ms < 1000) {
-    return `${(ms / 1000).toFixed(1)}s`;
+    return `${formatDecimal(ms / 1000, 1)}s`;
   }
 
   const totalSeconds = Math.ceil(ms / 1000);
@@ -40,6 +54,10 @@ export function formatRemaining(ms: number | null): string {
     return `${minutes}m ${seconds}s`;
   }
   return `${seconds}s`;
+}
+
+function formatDecimal(value: number, digits: number): string {
+  return value.toFixed(digits).replace(/0+$/, '').replace(/\.$/, '');
 }
 
 export function formatBadgeText(remainingMs: number, intervalMs: number): string {
@@ -62,5 +80,5 @@ export function formatBadgeText(remainingMs: number, intervalMs: number): string
 }
 
 function roundInterval(seconds: number): number {
-  return Math.round(seconds * 100) / 100;
+  return Math.round(seconds * 1000) / 1000;
 }

@@ -8,6 +8,8 @@
   import Timer from '@lucide/svelte/icons/timer';
   import {
     DEFAULT_INTERVAL_SECONDS,
+    MAX_INTERVAL_SECONDS,
+    formatDurationSeconds,
     formatIntervalSeconds,
     formatRemaining,
     normalizeIntervalSeconds
@@ -18,9 +20,18 @@
 
   const CLOCK_TICK_MS = 100;
   const STATE_POLL_MS = 500;
+  const INTERVAL_UNITS = [
+    { id: 'sec', label: 'sec', seconds: 1, step: '0.001', decimals: 3 },
+    { id: 'ms', label: 'ms', seconds: 0.001, step: '1', decimals: 0 },
+    { id: 'min', label: 'min', seconds: 60, step: '0.001', decimals: 3 },
+    { id: 'hr', label: 'hr', seconds: 3600, step: '0.001', decimals: 4 }
+  ] as const;
+
+  type IntervalUnit = (typeof INTERVAL_UNITS)[number]['id'];
 
   let refreshState = $state<RefreshState | null>(null);
   let intervalInput = $state<string | number | null>(formatIntervalSeconds(DEFAULT_INTERVAL_SECONDS));
+  let intervalUnit = $state<IntervalUnit>('sec');
   let busy = $state(false);
   let error = $state('');
   let now = $state(Date.now());
@@ -28,6 +39,7 @@
   let clockTimer: number | undefined;
 
   const isActive = $derived(Boolean(refreshState?.isRefreshing));
+  const selectedUnit = $derived(getIntervalUnit(intervalUnit));
   const intervalText = $derived(String(intervalInput ?? ''));
   const canStart = $derived(Boolean(refreshState?.canRefresh && !isActive && !busy && intervalText.trim()));
   const canStop = $derived(Boolean(refreshState?.canRefresh && isActive && !busy));
@@ -42,9 +54,9 @@
     return refreshState.remainingMs;
   });
   const remainingText = $derived(formatRemaining(remainingMs));
-  const intervalSummary = $derived(
-    `${formatIntervalSeconds(refreshState?.intervalSeconds ?? DEFAULT_INTERVAL_SECONDS)} ${t('secondsUnit')}`
-  );
+  const maxIntervalInput = $derived(formatIntervalForUnit(MAX_INTERVAL_SECONDS, intervalUnit));
+  const draftIntervalSeconds = $derived(getInputIntervalSeconds());
+  const intervalSummary = $derived(formatDurationSeconds(draftIntervalSeconds));
 
   onMount(() => {
     document.documentElement.lang = getUiLanguage();
@@ -70,8 +82,12 @@
     busy = true;
     error = '';
     try {
-      const seconds = normalizeIntervalSeconds(intervalText);
-      intervalInput = formatIntervalSeconds(seconds);
+      const seconds = getInputIntervalSeconds();
+      if (seconds === null) {
+        error = t('invalidInterval');
+        return;
+      }
+      intervalInput = formatIntervalForUnit(seconds, intervalUnit);
       applyState(await startRefresh(seconds), true);
     } catch (caught) {
       error = getErrorMessage(caught);
@@ -92,6 +108,51 @@
     }
   }
 
+  function getInputIntervalSeconds(): number | null {
+    const input = intervalText.trim();
+    if (!input) {
+      return null;
+    }
+
+    const value = Number(input);
+    if (!Number.isFinite(value)) {
+      return null;
+    }
+
+    return normalizeIntervalSeconds(value * selectedUnit.seconds);
+  }
+
+  function switchIntervalUnit(): void {
+    const seconds = getInputIntervalSeconds();
+    const nextUnit = getNextIntervalUnit(intervalUnit);
+    intervalUnit = nextUnit;
+
+    if (seconds !== null) {
+      intervalInput = formatIntervalForUnit(seconds, nextUnit);
+      return;
+    }
+
+    intervalInput = formatIntervalForUnit(refreshState?.intervalSeconds ?? DEFAULT_INTERVAL_SECONDS, nextUnit);
+  }
+
+  function getNextIntervalUnit(unit: IntervalUnit): IntervalUnit {
+    const index = INTERVAL_UNITS.findIndex((option) => option.id === unit);
+    return INTERVAL_UNITS[(index + 1) % INTERVAL_UNITS.length].id;
+  }
+
+  function getIntervalUnit(unit: IntervalUnit) {
+    return INTERVAL_UNITS.find((option) => option.id === unit) ?? INTERVAL_UNITS[0];
+  }
+
+  function formatIntervalForUnit(seconds: number, unit: IntervalUnit): string {
+    const option = getIntervalUnit(unit);
+    const value = seconds / option.seconds;
+    if (Number.isInteger(value)) {
+      return String(value);
+    }
+    return value.toFixed(option.decimals).replace(/0+$/, '').replace(/\.$/, '');
+  }
+
   function getErrorMessage(caught: unknown): string {
     return caught instanceof Error ? caught.message : t('cannotRefresh');
   }
@@ -101,7 +162,7 @@
     refreshState = next;
     error = '';
     if (syncInterval || next.isRefreshing) {
-      intervalInput = formatIntervalSeconds(next.intervalSeconds);
+      intervalInput = formatIntervalForUnit(next.intervalSeconds, intervalUnit);
     }
     scheduleStatePoll(next.isRefreshing);
     setClockActive(next.isRefreshing);
@@ -146,7 +207,7 @@
   }
 </script>
 
-<main data-theme="refresh" class="w-[312px] min-h-[198px] bg-base-100 p-3 text-base-content">
+<main data-theme="refresh" class="w-[326px] bg-base-100 p-3.5 text-base-content">
   <header class="flex items-center justify-between gap-2">
     <div class="flex min-w-0 items-center gap-2">
       <img
@@ -158,10 +219,6 @@
       <div class="min-w-0">
         <h1 class="truncate text-sm font-bold leading-tight">{t('extensionName')}</h1>
         <div class="mt-0.5 flex items-center gap-1.5">
-          <span
-            class={['status status-xs', isActive ? 'status-success' : 'status-neutral']}
-            aria-hidden="true"
-          ></span>
           <span class={['badge badge-soft badge-xs', isActive ? 'badge-success' : 'badge-neutral']}>
             {statusText}
           </span>
@@ -191,35 +248,44 @@
 
   <section class="mt-3 space-y-1.5">
     <label class="block text-[11px] font-semibold text-base-content/65" for="interval">{t('intervalLabel')}</label>
-    <label class="input input-sm w-full gap-2 bg-base-100">
+    <div class="input interval-field h-10 min-h-10 w-full gap-2 bg-base-100 pr-1.5">
       <Timer size={15} class="text-base-content/50" aria-hidden="true" />
       <input
         class="grow text-sm font-semibold tabular-nums"
         id="interval"
         type="number"
         min="0"
-        max="604800"
-        step="0.05"
+        max={maxIntervalInput}
+        step={selectedUnit.step}
         inputmode="decimal"
         bind:value={intervalInput}
         disabled={isActive || busy}
       />
-      <span class="text-xs font-semibold text-base-content/55">{t('secondsUnit')}</span>
-    </label>
+      <button
+        class="btn btn-ghost h-7 min-h-7 px-2 text-xs font-bold uppercase tracking-normal text-base-content/65 hover:bg-base-200"
+        type="button"
+        onclick={switchIntervalUnit}
+        disabled={busy}
+        title="Switch unit"
+        aria-label="Switch interval unit"
+      >
+        {selectedUnit.label}
+      </button>
+    </div>
   </section>
 
   <div class="mt-3 grid grid-cols-2 gap-2">
-    <button class="btn btn-primary btn-sm" type="button" disabled={!canStart} onclick={handleStart} title={t('start')}>
+    <button class="btn btn-primary h-10 min-h-10" type="button" disabled={!canStart} onclick={handleStart} title={t('start')}>
       <Play size={16} fill="currentColor" aria-hidden="true" />
       <span>{t('start')}</span>
     </button>
-    <button class="btn btn-error btn-soft btn-sm" type="button" disabled={!canStop} onclick={handleStop} title={t('stop')}>
+    <button class="btn btn-error btn-soft h-10 min-h-10" type="button" disabled={!canStop} onclick={handleStop} title={t('stop')}>
       <Square size={14} fill="currentColor" aria-hidden="true" />
       <span>{t('stop')}</span>
     </button>
   </div>
 
-  <footer class="mt-3 min-h-8">
+  <footer class="mt-2.5">
     {#if error}
       <div class="alert alert-error alert-soft min-h-0 gap-2 px-2.5 py-1.5 text-xs" role="alert">
         <AlertTriangle size={14} aria-hidden="true" />

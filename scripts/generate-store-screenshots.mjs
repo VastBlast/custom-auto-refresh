@@ -34,6 +34,7 @@ const screenshots = [
     body: ['A compact popup for exact refresh timing', 'without page clutter.'],
     active: false,
     interval: '5',
+    unit: 'sec',
     remaining: '--',
     badge: '',
     pageTitle: 'Documentation preview',
@@ -45,6 +46,7 @@ const screenshots = [
     body: ['The toolbar changes color and counts down', 'while refresh is running.'],
     active: true,
     interval: '15',
+    unit: 'sec',
     remaining: '12s',
     badge: '12',
     pageTitle: 'Development preview',
@@ -56,10 +58,11 @@ const screenshots = [
     body: ['Use zero or short intervals, stop instantly,', 'and keep each tab separate.'],
     active: true,
     interval: '0',
+    unit: 'ms',
     remaining: '0s',
     badge: '0',
     pageTitle: 'Live dashboard',
-    stat: '0s'
+    stat: '0 ms'
   }
 ];
 
@@ -92,7 +95,7 @@ function renderScreenshot(scenario) {
       ${headline(scenario.headline, 0, 0, 58)}
       ${bodyText(scenario.body, 0, 178, 25)}
       <g transform="translate(0 310)">
-        ${metricCard('Interval', scenario.interval === '0' ? '0 sec' : scenario.stat, 0)}
+        ${metricCard('Interval', intervalMetric(scenario), 0)}
         ${metricCard('Badge', scenario.badge || 'Idle', 166)}
         ${metricCard('Mode', scenario.active ? 'Active' : 'Ready', 332)}
       </g>
@@ -101,6 +104,10 @@ function renderScreenshot(scenario) {
       ${browserFrame(scenario)}
     </g>
   `);
+}
+
+function intervalMetric(scenario) {
+  return durationLabel(scenario);
 }
 
 function renderSmallPromo() {
@@ -186,35 +193,97 @@ function popupShot(scenario, options = {}) {
   const active = scenario.active;
   const status = active ? 'Refreshing' : 'Idle';
   const statusColor = active ? palette.green : palette.muted;
-  const startOpacity = active ? '0.45' : '1';
-  const stopOpacity = active ? '1' : '0.45';
   const footerLabel = active ? 'Next refresh' : 'Interval';
-  const footerValue = active ? scenario.remaining : `${scenario.interval} sec`;
+  const unit = scenario.unit ?? 'sec';
+  const unitLabel = unit.toUpperCase();
+  const footerValue = active ? scenario.remaining : durationLabel(scenario);
   const filter = options.shadow ? ' filter="url(#shadow)"' : '';
 
   return `<g${filter}>
-    <rect width="312" height="198" rx="18" fill="#fbfcf8" stroke="${palette.faint}"/>
-    <g transform="translate(12 12)">
+    <rect width="326" height="202" rx="18" fill="#fbfcf8" stroke="${palette.faint}"/>
+    <g transform="translate(14 14)">
       <image href="${active ? icons.active : icons.inactive}" x="0" y="0" width="32" height="32"/>
       <text x="42" y="13" fill="${palette.ink}" font-family="Inter,Arial,sans-serif" font-size="14" font-weight="850">Custom Auto Refresh</text>
-      <rect x="42" y="20" width="${active ? 78 : 45}" height="18" rx="9" fill="${active ? palette.greenSoft : '#e7ece6'}"/>
-      <circle cx="52" cy="29" r="3" fill="${statusColor}"/>
-      <text x="60" y="33" fill="${statusColor}" font-family="Inter,Arial,sans-serif" font-size="10" font-weight="850">${status}</text>
-      <rect x="226" y="0" width="62" height="30" rx="9" fill="${palette.paperAlt}"/>
-      <text x="257" y="19" text-anchor="middle" fill="${palette.ink}" font-family="Inter,Arial,sans-serif" font-size="11" font-weight="850">Source</text>
-      <text x="0" y="64" fill="${palette.muted}" font-family="Inter,Arial,sans-serif" font-size="11" font-weight="750">Interval</text>
-      <rect x="0" y="72" width="288" height="34" rx="9" fill="${palette.surface}" stroke="${palette.faint}"/>
-      <text x="16" y="95" fill="${palette.ink}" font-family="Inter,Arial,sans-serif" font-size="18" font-weight="860">${escapeXml(scenario.interval)}</text>
-      <text x="252" y="93" fill="${palette.muted}" font-family="Inter,Arial,sans-serif" font-size="11" font-weight="800">sec</text>
-      <rect x="0" y="118" width="140" height="34" rx="9" fill="${palette.green}" opacity="${startOpacity}"/>
-      <text x="70" y="140" text-anchor="middle" fill="#ffffff" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="850">Start</text>
-      <rect x="148" y="118" width="140" height="34" rx="9" fill="${palette.red}" opacity="${stopOpacity}"/>
-      <text x="218" y="140" text-anchor="middle" fill="#ffffff" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="850">Stop</text>
-      <rect x="0" y="164" width="288" height="24" rx="8" fill="${palette.paperAlt}"/>
-      <text x="12" y="180" fill="${palette.muted}" font-family="Inter,Arial,sans-serif" font-size="11" font-weight="750">${footerLabel}</text>
-      <text x="276" y="180" text-anchor="end" fill="${palette.ink}" font-family="Inter,Arial,sans-serif" font-size="12" font-weight="860">${escapeXml(footerValue)}</text>
+      <rect x="42" y="20" width="${active ? 70 : 34}" height="15" rx="7.5" fill="${active ? palette.greenSoft : '#e7ece6'}"/>
+      <text x="${active ? 77 : 59}" y="31" text-anchor="middle" fill="${statusColor}" font-family="Inter,Arial,sans-serif" font-size="9.5" font-weight="820">${status}</text>
+      <g transform="translate(204 2)">
+        ${githubMark(0, 0, 14, palette.ink)}
+        <text x="20" y="12" fill="${palette.ink}" font-family="Inter,Arial,sans-serif" font-size="11" font-weight="850">Source Co...</text>
+      </g>
+      <text x="0" y="66" fill="${palette.muted}" font-family="Inter,Arial,sans-serif" font-size="11" font-weight="750">Interval</text>
+      <rect x="0" y="74" width="298" height="40" rx="8" fill="${palette.surface}" stroke="${palette.faint}"/>
+      ${timerIcon(14, 90, 12, palette.muted)}
+      <text x="32" y="99" fill="${palette.ink}" font-family="Inter,Arial,sans-serif" font-size="17" font-weight="860">${escapeXml(scenario.interval)}</text>
+      <text x="280" y="99" text-anchor="end" fill="${palette.muted}" font-family="Inter,Arial,sans-serif" font-size="11" font-weight="900">${unitLabel}</text>
+      <rect x="0" y="126" width="145" height="40" rx="8" fill="${active ? '#dfe4dc' : palette.green}"/>
+      ${playIcon(52, 139, 13, active ? '#a8b3aa' : '#ffffff')}
+      <text x="82" y="151" text-anchor="middle" fill="${active ? '#a8b3aa' : '#ffffff'}" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="850">Start</text>
+      <rect x="153" y="126" width="145" height="40" rx="8" fill="${active ? palette.redSoft : '#dfe4dc'}"/>
+      ${stopIcon(202, 140, 11, active ? palette.red : '#a8b3aa')}
+      <text x="235" y="151" text-anchor="middle" fill="${active ? palette.red : '#a8b3aa'}" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="850">Stop</text>
+      <rect x="0" y="176" width="298" height="28" rx="8" fill="${palette.paperAlt}"/>
+      <text x="12" y="194" fill="${palette.muted}" font-family="Inter,Arial,sans-serif" font-size="11" font-weight="750">${footerLabel}</text>
+      <text x="286" y="194" text-anchor="end" fill="${palette.ink}" font-family="Inter,Arial,sans-serif" font-size="12" font-weight="860">${escapeXml(footerValue)}</text>
     </g>
   </g>`;
+}
+
+function githubMark(x, y, size, color) {
+  const scale = size / 98;
+  return `<path transform="translate(${x} ${y}) scale(${scale})" fill="${color}" fill-rule="evenodd" clip-rule="evenodd" d="M48.9 0C21.9 0 0 21.9 0 48.9c0 21.6 14 39.9 33.4 46.4 2.4.4 3.3-1.1 3.3-2.4v-8.4c-13.6 3-16.5-6.6-16.5-6.6-2.2-5.7-5.4-7.2-5.4-7.2-4.4-3 .3-2.9.3-2.9 4.9.3 7.5 5 7.5 5 4.4 7.5 11.5 5.3 14.3 4.1.4-3.2 1.7-5.3 3.1-6.6-10.9-1.2-22.3-5.4-22.3-24.2 0-5.3 1.9-9.7 5-13.1-.5-1.2-2.2-6.2.5-12.9 0 0 4.1-1.3 13.4 5 3.9-1.1 8-1.6 12.2-1.6s8.3.5 12.2 1.6c9.3-6.3 13.4-5 13.4-5 2.7 6.7 1 11.7.5 12.9 3.1 3.4 5 7.8 5 13.1 0 18.8-11.4 23-22.3 24.2 1.8 1.5 3.4 4.5 3.4 9.1v13.5c0 1.3.9 2.8 3.4 2.4 19.4-6.5 33.4-24.8 33.4-46.4C97.8 21.9 75.9 0 48.9 0Z"/>`;
+}
+
+function timerIcon(x, y, size, color) {
+  return `<g transform="translate(${x} ${y})" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="${size / 2}" cy="${size / 2 + 1}" r="${size / 2 - 2}"/>
+    <path d="M${size / 2} ${size / 2 + 1}v-${size / 4}"/>
+    <path d="M${size / 2} ${size / 2 + 1}l${size / 5}-${size / 7}"/>
+    <path d="M${size / 2 - 2} 0h4"/>
+  </g>`;
+}
+
+function playIcon(x, y, size, color) {
+  return `<path d="M${x} ${y}v${size}l${Math.round(size * 0.82)}-${size / 2}Z" fill="${color}"/>`;
+}
+
+function stopIcon(x, y, size, color) {
+  return `<rect x="${x}" y="${y}" width="${size}" height="${size}" rx="2" fill="${color}"/>`;
+}
+
+function durationLabel(scenario) {
+  const value = Number(scenario.interval);
+  const unit = scenario.unit ?? 'sec';
+  const seconds = unit === 'ms' ? value / 1000 : unit === 'min' ? value * 60 : unit === 'hr' ? value * 3600 : value;
+  return formatDurationMs(seconds * 1000);
+}
+
+function formatDurationMs(ms) {
+  if (!Number.isFinite(ms) || ms <= 0) {
+    return '0s';
+  }
+  if (ms < 100) {
+    return `${Math.max(1, Math.round(ms))}ms`;
+  }
+  if (ms < 1000) {
+    return `${formatDecimal(ms / 1000, 1)}s`;
+  }
+
+  const totalSeconds = Math.ceil(ms / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`;
+  }
+  if (minutes > 0) {
+    return `${minutes}m ${seconds}s`;
+  }
+  return `${seconds}s`;
+}
+
+function formatDecimal(value, digits) {
+  return value.toFixed(digits).replace(/0+$/, '').replace(/\.$/, '');
 }
 
 function toolbarIcon(scenario, scale = 1) {

@@ -4,6 +4,7 @@ import {
   MAX_INTERVAL_SECONDS,
   MIN_INTERVAL_SECONDS,
   formatBadgeText,
+  formatDurationSeconds,
   formatIntervalSeconds,
   formatRemaining,
   normalizeIntervalSeconds
@@ -18,7 +19,8 @@ describe('refresh intervals', () => {
   });
 
   it('rounds intervals to browser-friendly precision', () => {
-    expect(normalizeIntervalSeconds('1.236')).toBe(1.24);
+    expect(normalizeIntervalSeconds('1.2364')).toBe(1.236);
+    expect(normalizeIntervalSeconds('0.0014')).toBe(0.001);
     expect(formatIntervalSeconds(1.5)).toBe('1.5');
     expect(formatIntervalSeconds(10)).toBe('10');
   });
@@ -26,8 +28,12 @@ describe('refresh intervals', () => {
   it('formats popup and badge countdowns', () => {
     expect(formatRemaining(null)).toBe('--');
     expect(formatRemaining(0)).toBe('0s');
+    expect(formatRemaining(50)).toBe('50ms');
     expect(formatRemaining(900)).toBe('0.9s');
     expect(formatRemaining(61000)).toBe('1m 1s');
+    expect(formatDurationSeconds(null)).toBe('--');
+    expect(formatDurationSeconds(0.05)).toBe('50ms');
+    expect(formatDurationSeconds(100)).toBe('1m 40s');
     expect(formatBadgeText(900, 500)).toBe('0.9');
     expect(formatBadgeText(0, 0)).toBe('0');
     expect(formatBadgeText(12000, 15000)).toBe('12');

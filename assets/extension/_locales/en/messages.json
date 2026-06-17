@@ -11,6 +11,6 @@
   "idle": { "message": "Idle" },
   "nextRefresh": { "message": "Next refresh" },
   "cannotRefresh": { "message": "This page cannot be refreshed by the extension." },
-  "invalidInterval": { "message": "Enter a number from 0 to 604800 seconds." },
+  "invalidInterval": { "message": "Enter a valid refresh interval." },
   "sourceCode": { "message": "Source Code" }
 }
