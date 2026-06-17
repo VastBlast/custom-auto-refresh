@@ -4,7 +4,6 @@ const fallbackMessages = {
   extensionDescription: 'Refresh the current tab on a custom interval.',
   actionTitle: 'Custom Auto Refresh',
   intervalLabel: 'Interval',
-  secondsUnit: 'sec',
   start: 'Start',
   stop: 'Stop',
   active: 'Refreshing',

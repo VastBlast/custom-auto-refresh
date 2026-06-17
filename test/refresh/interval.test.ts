@@ -34,6 +34,8 @@ describe('refresh intervals', () => {
     expect(formatDurationSeconds(null)).toBe('--');
     expect(formatDurationSeconds(0.05)).toBe('50ms');
     expect(formatDurationSeconds(100)).toBe('1m 40s');
+    expect(formatBadgeText(1, 1)).toBe('1ms');
+    expect(formatBadgeText(50, 50)).toBe('50ms');
     expect(formatBadgeText(900, 500)).toBe('0.9');
     expect(formatBadgeText(0, 0)).toBe('0');
     expect(formatBadgeText(12000, 15000)).toBe('12');

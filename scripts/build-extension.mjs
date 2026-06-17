@@ -1,4 +1,4 @@
-import { cp, mkdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { cp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 const appDir = 'dist/app';
@@ -10,6 +10,7 @@ await assertFile(join(appDir, 'assets/background.js'));
 
 for (const target of targets) {
   const outDir = join('dist', target);
+  await rm(outDir, { recursive: true, force: true });
   await mkdir(outDir, { recursive: true });
   await cp(appDir, outDir, { recursive: true, force: true });
   await writeFile(join(outDir, 'manifest.json'), `${JSON.stringify(createManifest(target), null, 2)}\n`);
@@ -43,7 +44,7 @@ function createManifest(target) {
       service_worker: 'assets/background.js',
       type: 'module'
     },
-    permissions: ['activeTab', 'scripting', 'storage', 'tabs'],
+    permissions: ['scripting', 'storage', 'tabs'],
     host_permissions: ['http://*/*', 'https://*/*'],
     content_security_policy: {
       extension_pages: "default-src 'self'; script-src 'self'; object-src 'none'; img-src 'self' data:; style-src 'self'"

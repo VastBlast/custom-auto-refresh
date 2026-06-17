@@ -12,7 +12,7 @@ Custom Auto Refresh is local-first and does not track users, collect analytics, 
 ## Features
 
 - Start and stop automatic refreshes for the active tab.
-- Use intervals from `0.05` seconds up to seven days.
+- Use seconds, milliseconds, minutes, or hours for intervals up to seven days.
 - See the next refresh countdown in the extension badge.
 - Build separate packages for Chrome, Edge, and Firefox from one source tree.
 - Localized browser UI strings through extension `_locales`.

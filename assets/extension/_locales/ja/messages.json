@@ -4,13 +4,12 @@
   "extensionDescription": { "message": "現在のタブを指定した間隔で更新します。" },
   "actionTitle": { "message": "カスタム自動更新" },
   "intervalLabel": { "message": "間隔" },
-  "secondsUnit": { "message": "秒" },
   "start": { "message": "開始" },
   "stop": { "message": "停止" },
   "active": { "message": "更新中" },
   "idle": { "message": "待機中" },
   "nextRefresh": { "message": "次の更新" },
   "cannotRefresh": { "message": "このページは拡張機能で更新できません。" },
-  "invalidInterval": { "message": "0 から 604800 秒までの数値を入力してください。" },
+  "invalidInterval": { "message": "有効な更新間隔を入力してください。" },
   "sourceCode": { "message": "ソースコード" }
 }

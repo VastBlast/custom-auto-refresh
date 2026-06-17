@@ -64,8 +64,11 @@ export function formatBadgeText(remainingMs: number, intervalMs: number): string
   if (remainingMs <= 0) {
     return '0';
   }
+  if (intervalMs < 100) {
+    return `${Math.max(1, Math.ceil(remainingMs))}ms`;
+  }
   if (intervalMs < 1000) {
-    return Math.max(MIN_INTERVAL_SECONDS, remainingMs / 1000).toFixed(1);
+    return formatDecimal(Math.max(MIN_INTERVAL_SECONDS, remainingMs / 1000), 1);
   }
 
   const seconds = Math.ceil(remainingMs / 1000);

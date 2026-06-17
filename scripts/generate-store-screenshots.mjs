@@ -37,8 +37,7 @@ const screenshots = [
     unit: 'sec',
     remaining: '--',
     badge: '',
-    pageTitle: 'Documentation preview',
-    stat: '5 sec'
+    stat: '5s'
   },
   {
     id: '02-active-badge',
@@ -49,7 +48,6 @@ const screenshots = [
     unit: 'sec',
     remaining: '12s',
     badge: '12',
-    pageTitle: 'Development preview',
     stat: '12s'
   },
   {
@@ -61,8 +59,7 @@ const screenshots = [
     unit: 'ms',
     remaining: '0s',
     badge: '0',
-    pageTitle: 'Live dashboard',
-    stat: '0 ms'
+    stat: '0s'
   }
 ];
 
@@ -164,7 +161,6 @@ function browserFrame(scenario) {
     <circle cx="62" cy="35" r="8" fill="#d8a846"/>
     <circle cx="90" cy="35" r="8" fill="#4d9a67"/>
     <rect x="132" y="21" width="214" height="28" rx="14" fill="${palette.surface}"/>
-    <text x="152" y="39" fill="${palette.muted}" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="700">${escapeXml(scenario.pageTitle)}</text>
     <g transform="translate(448 18)">
       ${toolbarIcon(scenario, 1)}
     </g>

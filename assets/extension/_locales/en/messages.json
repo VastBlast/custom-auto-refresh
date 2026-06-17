@@ -4,7 +4,6 @@
   "extensionDescription": { "message": "Refresh the current tab on a custom interval." },
   "actionTitle": { "message": "Custom Auto Refresh" },
   "intervalLabel": { "message": "Interval" },
-  "secondsUnit": { "message": "sec" },
   "start": { "message": "Start" },
   "stop": { "message": "Stop" },
   "active": { "message": "Refreshing" },

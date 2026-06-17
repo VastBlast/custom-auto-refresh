@@ -4,13 +4,12 @@
   "extensionDescription": { "message": "按自定义间隔刷新当前标签页。" },
   "actionTitle": { "message": "自定义自动刷新" },
   "intervalLabel": { "message": "间隔" },
-  "secondsUnit": { "message": "秒" },
   "start": { "message": "开始" },
   "stop": { "message": "停止" },
   "active": { "message": "正在刷新" },
   "idle": { "message": "空闲" },
   "nextRefresh": { "message": "下次刷新" },
   "cannotRefresh": { "message": "扩展程序无法刷新此页面。" },
-  "invalidInterval": { "message": "请输入 0 到 604800 秒之间的数字。" },
+  "invalidInterval": { "message": "请输入有效的刷新间隔。" },
   "sourceCode": { "message": "源代码" }
 }

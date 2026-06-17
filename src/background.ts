@@ -30,7 +30,14 @@ interface ActionState {
 const ACTION_ICON_SIZES = [16, 24, 32] as const;
 const STORAGE_KEY = 'customAutoRefresh';
 const KEEP_ALIVE_PORT = 'custom-auto-refresh:keepAlive';
+
+// Jobs are held in memory for fast ticking and mirrored to storage so MV3
+// service-worker restarts can resume active refreshes.
 const jobs = new Map<number, RefreshJob>();
+
+// Browser action updates are relatively expensive. This cache prevents repeated
+// badge/icon writes, but it must be invalidated on navigation because Chrome can
+// reset per-tab action icons while a page reloads.
 const actionStates = new Map<number, ActionState>();
 const iconImageData = new Map<IconState, Record<number, ImageData>>();
 let lastIntervals: Record<string, number> = {};
@@ -54,6 +61,9 @@ chrome.runtime.onConnect.addListener((port) => {
     return;
   }
 
+  // MV3 service workers can suspend between timers. A long-lived port from a
+  // normal web page keeps this worker available for accurate badge updates and
+  // scheduled reloads; reconnect before Chrome's five-minute port limit.
   const tabId = port.sender?.tab?.id;
   const timer = setTimeout(() => port.disconnect(), 250000);
   port.onDisconnect.addListener(() => {
@@ -82,11 +92,16 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     return;
   }
 
+  // Navigation can clear the toolbar icon even though our in-memory job stays
+  // active, so force the next update to rewrite the action state.
   if (changeInfo.url || changeInfo.status === 'loading' || changeInfo.status === 'complete') {
     actionStates.delete(tabId);
   }
   if (changeInfo.status === 'loading' || changeInfo.status === 'complete' || tab.status === 'complete') {
     void updateAction(tabId);
+  }
+  if (changeInfo.status === 'complete') {
+    void connectKeepAlive(tabId);
   }
 });
 
@@ -167,6 +182,8 @@ async function runTick(): Promise<void> {
   await initialize();
   const now = Date.now();
 
+  // Iterate over a snapshot so jobs can be stopped safely while the tick is
+  // running, for example if a tab becomes unrefreshable during reload.
   for (const job of [...jobs.values()]) {
     if (!job.refreshing && job.nextRefreshAt <= now) {
       await updateAction(job.tabId);
@@ -188,6 +205,8 @@ async function refreshTab(job: RefreshJob): Promise<void> {
       return;
     }
 
+    // Register the completion listener before reloading so fast local pages
+    // cannot complete before we start waiting.
     const complete = waitForTabComplete(job.tabId);
     await reloadTab(job.tabId);
     await complete;
@@ -208,6 +227,8 @@ function scheduleTick(): void {
     return;
   }
 
+  // Wake at the next due job, capped at one second so the badge countdown keeps
+  // moving without creating one timer per tab.
   const now = Date.now();
   let nextDelay = 1000;
   for (const job of jobs.values()) {
@@ -348,26 +369,44 @@ function drawRoundedRect(
 
 async function connectKeepAlive(tabId?: number): Promise<void> {
   const tabIds = tabId === undefined ? [...jobs.keys()] : jobs.has(tabId) ? [tabId] : [];
-  const tabs = await Promise.all(tabIds.map((id) => getTab(id)));
+  const jobTabs = await Promise.all(tabIds.map((id) => getTab(id)));
+  if (await connectToFirstAvailableTab(jobTabs)) {
+    return;
+  }
+
+  // Some refresh targets reject script injection. A fallback HTTP(S) tab can
+  // still hold the keep-alive port; refresh jobs themselves remain tab-scoped.
+  const fallbackTabs = await queryRefreshableTabs();
+  await connectToFirstAvailableTab(fallbackTabs);
+}
+
+async function connectToFirstAvailableTab(tabs: Array<chrome.tabs.Tab | undefined>): Promise<boolean> {
   for (const tab of tabs) {
-    const tabId = tab?.id;
-    if (tabId === undefined || !isRefreshableUrl(tab?.url)) {
+    if (tab?.id === undefined || !isRefreshableUrl(tab.url)) {
       continue;
     }
-    try {
-      await chromeCall<chrome.scripting.InjectionResult<void>[]>((resolve) =>
-        chrome.scripting.executeScript(
-          {
-            target: { tabId },
-            func: connectPort,
-            args: [KEEP_ALIVE_PORT]
-          },
-          resolve
-        )
-      );
-    } catch {
-      // Some pages reject script injection; the scheduler still runs while the worker is alive.
+    if (await injectKeepAlive(tab.id)) {
+      return true;
     }
+  }
+  return false;
+}
+
+async function injectKeepAlive(tabId: number): Promise<boolean> {
+  try {
+    await chromeCall<chrome.scripting.InjectionResult<void>[]>((resolve) =>
+      chrome.scripting.executeScript(
+        {
+          target: { tabId },
+          func: connectPort,
+          args: [KEEP_ALIVE_PORT]
+        },
+        resolve
+      )
+    );
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -383,12 +422,17 @@ function getTab(tabId: number): Promise<chrome.tabs.Tab | undefined> {
   return chromeCall<chrome.tabs.Tab>((resolve) => chrome.tabs.get(tabId, resolve)).catch(() => undefined);
 }
 
+function queryRefreshableTabs(): Promise<chrome.tabs.Tab[]> {
+  return chromeCall((resolve) => chrome.tabs.query({ url: ['http://*/*', 'https://*/*'] }, resolve));
+}
+
 function reloadTab(tabId: number): Promise<void> {
   return chromeCall((resolve) => chrome.tabs.reload(tabId, resolve));
 }
 
 function waitForTabComplete(tabId: number): Promise<void> {
   return new Promise((resolve) => {
+    // Do not hang forever on pages that never report complete.
     const timeout = setTimeout(done, 60000);
 
     function listener(updatedTabId: number, changeInfo: { status?: string }): void {
@@ -431,6 +475,8 @@ function sanitizeStoredState(value: StoredState | undefined): StoredState {
     return { jobs: [], lastIntervals: {} };
   }
 
+  // Extension storage is user/modifiable state, so validate it before trusting
+  // persisted jobs after a service-worker restart or extension update.
   return {
     jobs: Array.isArray(value.jobs)
       ? value.jobs.filter(

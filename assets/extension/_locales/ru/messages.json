@@ -4,13 +4,12 @@
   "extensionDescription": { "message": "Обновляйте текущую вкладку с заданным интервалом." },
   "actionTitle": { "message": "Пользовательское автообновление" },
   "intervalLabel": { "message": "Интервал" },
-  "secondsUnit": { "message": "с" },
   "start": { "message": "Старт" },
   "stop": { "message": "Стоп" },
   "active": { "message": "Обновляется" },
   "idle": { "message": "Ожидание" },
   "nextRefresh": { "message": "Следующее обновление" },
   "cannotRefresh": { "message": "Расширение не может обновить эту страницу." },
-  "invalidInterval": { "message": "Введите число от 0 до 604800 секунд." },
+  "invalidInterval": { "message": "Введите допустимый интервал обновления." },
   "sourceCode": { "message": "Исходный код" }
 }
