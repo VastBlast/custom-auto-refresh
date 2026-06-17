@@ -43,6 +43,7 @@
   const intervalText = $derived(String(intervalInput ?? ''));
   const canStart = $derived(Boolean(refreshState?.canRefresh && !isActive && !busy && intervalText.trim()));
   const canStop = $derived(Boolean(refreshState?.canRefresh && isActive && !busy));
+  const canSwitchUnit = $derived(!isActive && !busy);
   const statusText = $derived(isActive ? t('active') : t('idle'));
   const remainingMs = $derived.by(() => {
     if (!refreshState?.isRefreshing) {
@@ -123,6 +124,10 @@
   }
 
   function switchIntervalUnit(): void {
+    if (!canSwitchUnit) {
+      return;
+    }
+
     const seconds = getInputIntervalSeconds();
     const nextUnit = getNextIntervalUnit(intervalUnit);
     intervalUnit = nextUnit;
@@ -265,7 +270,7 @@
         class="btn btn-ghost h-7 min-h-7 px-2 text-xs font-bold uppercase tracking-normal text-base-content/65 hover:bg-base-200"
         type="button"
         onclick={switchIntervalUnit}
-        disabled={busy}
+        disabled={!canSwitchUnit}
         title="Switch unit"
         aria-label="Switch interval unit"
       >
