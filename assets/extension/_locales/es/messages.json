@@ -1,6 +1,6 @@
 {
   "extensionName": { "message": "Actualización automática personalizada" },
-  "extensionShortName": { "message": "Auto actualizar" },
+  "extensionShortName": { "message": "Auto recarga" },
   "extensionDescription": { "message": "Actualiza la pestaña actual en un intervalo personalizado." },
   "actionTitle": { "message": "Actualización automática personalizada" },
   "intervalLabel": { "message": "Intervalo" },

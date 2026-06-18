@@ -1,6 +1,6 @@
 {
   "extensionName": { "message": "Пользовательское автообновление" },
-  "extensionShortName": { "message": "Автообновление" },
+  "extensionShortName": { "message": "Автообн." },
   "extensionDescription": { "message": "Обновляйте текущую вкладку с заданным интервалом." },
   "actionTitle": { "message": "Пользовательское автообновление" },
   "intervalLabel": { "message": "Интервал" },

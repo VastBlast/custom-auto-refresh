@@ -1,6 +1,6 @@
 {
   "extensionName": { "message": "Atualização automática personalizada" },
-  "extensionShortName": { "message": "Auto atualizar" },
+  "extensionShortName": { "message": "Auto recarga" },
   "extensionDescription": { "message": "Atualize a guia atual em um intervalo personalizado." },
   "actionTitle": { "message": "Atualização automática personalizada" },
   "intervalLabel": { "message": "Intervalo" },
