@@ -3,6 +3,7 @@ import {
   formatBadgeText,
   normalizeIntervalSeconds
 } from './lib/refresh/interval';
+import { DEFAULT_OPTIONS, sanitizeOptions, type RefreshOptions } from './lib/refresh/options';
 import type { RefreshRequest, RefreshResponse, RefreshState } from './lib/refresh/types';
 import {
   ICON_ARROW,
@@ -18,6 +19,9 @@ interface StoredRefreshJob {
   tabId: number;
   intervalMs: number;
   nextRefreshAt: number;
+  startedAt: number;
+  refreshCount: number;
+  options: RefreshOptions;
 }
 
 interface RefreshJob extends StoredRefreshJob {
@@ -27,6 +31,7 @@ interface RefreshJob extends StoredRefreshJob {
 interface StoredState {
   jobs: StoredRefreshJob[];
   lastIntervals: Record<string, number>;
+  lastOptions: RefreshOptions;
 }
 
 interface ActionState {
@@ -51,6 +56,7 @@ const jobs = new Map<number, RefreshJob>();
 const actionStates = new Map<number, ActionState>();
 const iconImageData = new Map<IconState, Record<number, ImageData>>();
 let lastIntervals: Record<string, number> = {};
+let lastOptions: RefreshOptions = DEFAULT_OPTIONS;
 let scheduler: ReturnType<typeof setTimeout> | undefined;
 let initialized: Promise<void> | undefined;
 
@@ -113,6 +119,7 @@ async function initialize(): Promise<void> {
   initialized ??= (async () => {
     const stored = await readStoredState();
     lastIntervals = stored.lastIntervals;
+    lastOptions = stored.lastOptions;
     jobs.clear();
     for (const job of stored.jobs) {
       if (job.tabId > 0 && job.intervalMs >= 0) {
@@ -134,7 +141,7 @@ async function handleMessage(message: RefreshRequest): Promise<RefreshState> {
     return getActiveTabState();
   }
   if (message.type === 'refresh:start') {
-    return startActiveTab(message.intervalSeconds);
+    return startActiveTab(message.intervalSeconds, message.options);
   }
   if (message.type === 'refresh:stop') {
     return stopActiveTab();
@@ -142,20 +149,26 @@ async function handleMessage(message: RefreshRequest): Promise<RefreshState> {
   throw new Error('Unknown refresh command.');
 }
 
-async function startActiveTab(intervalSeconds: number): Promise<RefreshState> {
+async function startActiveTab(intervalSeconds: number, rawOptions: unknown): Promise<RefreshState> {
   const tab = await getActiveTab();
   if (!tab?.id) {
     throw new Error('This page cannot be refreshed by the extension.');
   }
 
+  const options = sanitizeOptions(rawOptions);
   const intervalMs = normalizeIntervalSeconds(intervalSeconds) * 1000;
+  const now = Date.now();
   jobs.set(tab.id, {
     tabId: tab.id,
     intervalMs,
-    nextRefreshAt: Date.now() + intervalMs,
+    nextRefreshAt: options.refreshImmediately ? now : now + intervalMs,
+    startedAt: now,
+    refreshCount: 0,
+    options,
     refreshing: false
   });
   lastIntervals[String(tab.id)] = intervalMs;
+  lastOptions = options;
   await saveState();
   await updateAction(tab.id);
   rescheduleTick();
@@ -193,7 +206,12 @@ async function runTick(): Promise<void> {
   const now = Date.now();
 
   for (const job of jobs.values()) {
-    if (!job.refreshing && job.nextRefreshAt <= now) {
+    if (job.refreshing) {
+      continue;
+    }
+    if (reachedLimit(job, now)) {
+      runQuietly(stopTab(job.tabId));
+    } else if (job.nextRefreshAt <= now) {
       runQuietly(refreshTab(job));
     } else {
       await updateAction(job.tabId);
@@ -201,6 +219,15 @@ async function runTick(): Promise<void> {
   }
 
   scheduleTick();
+}
+
+// Count- and time-based stop conditions from the job's advanced options.
+function reachedLimit(job: RefreshJob, now: number): boolean {
+  const { maxRefreshes, stopAfterMinutes } = job.options;
+  if (maxRefreshes !== null && job.refreshCount >= maxRefreshes) {
+    return true;
+  }
+  return stopAfterMinutes !== null && now - job.startedAt >= stopAfterMinutes * 60000;
 }
 
 async function refreshTab(job: RefreshJob): Promise<void> {
@@ -213,9 +240,17 @@ async function refreshTab(job: RefreshJob): Promise<void> {
       return;
     }
 
-    await reloadAndWaitForTabSettled(job.tabId);
-    if (jobs.has(job.tabId)) {
-      job.nextRefreshAt = Date.now() + job.intervalMs;
+    await reloadAndWaitForTabSettled(job.tabId, job.options.bypassCache);
+    const current = jobs.get(job.tabId);
+    if (current) {
+      current.refreshCount += 1;
+      const completedAt = Date.now();
+      if (reachedLimit(current, completedAt)) {
+        await stopTab(current.tabId);
+        return;
+      }
+      current.nextRefreshAt = completedAt + current.intervalMs;
+      await saveState();
     }
   } catch {
     await stopTab(job.tabId);
@@ -272,7 +307,9 @@ function getStateForTab(tab: chrome.tabs.Tab | undefined): RefreshState {
     isRefreshing: Boolean(job),
     intervalSeconds: intervalMs / 1000,
     remainingMs: job ? Math.max(0, job.nextRefreshAt - Date.now()) : null,
-    nextRefreshAt: job?.nextRefreshAt ?? null
+    nextRefreshAt: job?.nextRefreshAt ?? null,
+    options: job?.options ?? lastOptions,
+    refreshCount: job?.refreshCount ?? 0
   };
 }
 
@@ -430,11 +467,11 @@ function queryInjectableTabs(): Promise<chrome.tabs.Tab[]> {
   return chromeCall((resolve) => chrome.tabs.query({ url: ['http://*/*', 'https://*/*'] }, resolve));
 }
 
-function reloadTab(tabId: number): Promise<void> {
-  return chromeCall((resolve) => chrome.tabs.reload(tabId, resolve));
+function reloadTab(tabId: number, bypassCache: boolean): Promise<void> {
+  return chromeCall((resolve) => chrome.tabs.reload(tabId, { bypassCache }, resolve));
 }
 
-async function reloadAndWaitForTabSettled(tabId: number): Promise<void> {
+async function reloadAndWaitForTabSettled(tabId: number, bypassCache: boolean): Promise<void> {
   let armed = false;
   let armedAt = 0;
   let sawLoading = false;
@@ -491,7 +528,7 @@ async function reloadAndWaitForTabSettled(tabId: number): Promise<void> {
 
   chrome.tabs.onUpdated.addListener(listener);
   try {
-    await reloadTab(tabId);
+    await reloadTab(tabId, bypassCache);
     armed = true;
     armedAt = Date.now();
     runQuietly(checkTabStatus());
@@ -511,34 +548,49 @@ async function readStoredState(): Promise<StoredState> {
 
 async function saveState(): Promise<void> {
   const stored: StoredState = {
-    jobs: Array.from(jobs.values(), ({ tabId, intervalMs, nextRefreshAt }) => ({
+    jobs: Array.from(jobs.values(), ({ tabId, intervalMs, nextRefreshAt, startedAt, refreshCount, options }) => ({
       tabId,
       intervalMs,
-      nextRefreshAt
+      nextRefreshAt,
+      startedAt,
+      refreshCount,
+      options
     })),
-    lastIntervals
+    lastIntervals,
+    lastOptions
   };
   await chromeCall<void>((resolve) => chrome.storage.local.set({ [STORAGE_KEY]: stored }, resolve));
 }
 
 function sanitizeStoredState(value: StoredState | undefined): StoredState {
   if (!value || typeof value !== 'object') {
-    return { jobs: [], lastIntervals: {} };
+    return { jobs: [], lastIntervals: {}, lastOptions: DEFAULT_OPTIONS };
   }
 
   // Extension storage is user/modifiable state, so validate it before trusting
-  // persisted jobs after a service-worker restart or extension update.
+  // persisted jobs after a service-worker restart or extension update. Older
+  // jobs may predate the advanced options, so missing fields fall back safely.
   return {
     jobs: Array.isArray(value.jobs)
-      ? value.jobs.filter(
-          (job) =>
-            Number.isInteger(job.tabId) &&
-            Number.isFinite(job.intervalMs) &&
-            job.intervalMs >= 0 &&
-            Number.isFinite(job.nextRefreshAt)
-        )
+      ? value.jobs
+          .filter(
+            (job) =>
+              Number.isInteger(job.tabId) &&
+              Number.isFinite(job.intervalMs) &&
+              job.intervalMs >= 0 &&
+              Number.isFinite(job.nextRefreshAt)
+          )
+          .map((job) => ({
+            tabId: job.tabId,
+            intervalMs: job.intervalMs,
+            nextRefreshAt: job.nextRefreshAt,
+            startedAt: Number.isFinite(job.startedAt) ? job.startedAt : Date.now(),
+            refreshCount: Number.isInteger(job.refreshCount) && job.refreshCount >= 0 ? job.refreshCount : 0,
+            options: sanitizeOptions(job.options)
+          }))
       : [],
-    lastIntervals: value.lastIntervals && typeof value.lastIntervals === 'object' ? value.lastIntervals : {}
+    lastIntervals: value.lastIntervals && typeof value.lastIntervals === 'object' ? value.lastIntervals : {},
+    lastOptions: sanitizeOptions(value.lastOptions)
   };
 }
 

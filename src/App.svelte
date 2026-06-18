@@ -2,8 +2,12 @@
 
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { slide } from 'svelte/transition';
   import AlertTriangle from '@lucide/svelte/icons/triangle-alert';
+  import ChevronDown from '@lucide/svelte/icons/chevron-down';
   import Play from '@lucide/svelte/icons/play';
+  import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
+  import SlidersHorizontal from '@lucide/svelte/icons/sliders-horizontal';
   import Square from '@lucide/svelte/icons/square';
   import Timer from '@lucide/svelte/icons/timer';
   import {
@@ -14,6 +18,13 @@
     formatRemaining,
     normalizeIntervalSeconds
   } from './lib/refresh/interval';
+  import {
+    DEFAULT_OPTIONS,
+    MAX_REFRESHES,
+    MAX_STOP_AFTER_MINUTES,
+    hasNonDefaultOptions,
+    sanitizeOptions
+  } from './lib/refresh/options';
   import { getPopupState, startRefresh, stopRefresh } from './lib/refresh/client';
   import type { RefreshState } from './lib/refresh/types';
   import { getUiLanguage, t } from './lib/i18n/messages';
@@ -35,8 +46,14 @@
   let busy = $state(false);
   let error = $state('');
   let now = $state(Date.now());
+  let showAdvanced = $state(false);
+  let bypassCache = $state(false);
+  let refreshImmediately = $state(false);
+  let maxRefreshesInput = $state<number | null>(null);
+  let stopAfterInput = $state<number | null>(null);
   let pollTimer: number | undefined;
   let clockTimer: number | undefined;
+  let optionsInitialized = false;
 
   const isActive = $derived(Boolean(refreshState?.isRefreshing));
   const selectedUnit = $derived(getIntervalUnit(intervalUnit));
@@ -58,12 +75,35 @@
   const maxIntervalInput = $derived(formatIntervalForUnit(MAX_INTERVAL_SECONDS, intervalUnit));
   const draftIntervalSeconds = $derived(getInputIntervalSeconds());
   const intervalSummary = $derived(formatDurationSeconds(draftIntervalSeconds));
+  const optionsDisabled = $derived(isActive || busy);
+  const draftOptions = $derived(
+    sanitizeOptions({
+      bypassCache,
+      refreshImmediately,
+      maxRefreshes: maxRefreshesInput,
+      stopAfterMinutes: stopAfterInput
+    })
+  );
+  const canResetOptions = $derived(!optionsDisabled && hasNonDefaultOptions(draftOptions));
 
   onMount(() => {
     document.documentElement.lang = getUiLanguage();
     void loadState(true);
     return clearTimers;
   });
+
+  // Focus the interval field on open so the user can type or press Enter at once.
+  function autofocus(node: HTMLInputElement) {
+    node.focus();
+    node.select();
+  }
+
+  function resetOptions(): void {
+    bypassCache = DEFAULT_OPTIONS.bypassCache;
+    refreshImmediately = DEFAULT_OPTIONS.refreshImmediately;
+    maxRefreshesInput = DEFAULT_OPTIONS.maxRefreshes;
+    stopAfterInput = DEFAULT_OPTIONS.stopAfterMinutes;
+  }
 
   async function loadState(syncInterval: boolean) {
     try {
@@ -89,7 +129,7 @@
         return;
       }
       intervalInput = formatIntervalForUnit(seconds, intervalUnit);
-      applyState(await startRefresh(seconds), true);
+      applyState(await startRefresh(seconds, draftOptions), true);
     } catch (caught) {
       error = getErrorMessage(caught);
     } finally {
@@ -168,6 +208,14 @@
     error = '';
     if (syncInterval || next.isRefreshing) {
       intervalInput = formatIntervalForUnit(next.intervalSeconds, intervalUnit);
+      bypassCache = next.options.bypassCache;
+      refreshImmediately = next.options.refreshImmediately;
+      maxRefreshesInput = next.options.maxRefreshes;
+      stopAfterInput = next.options.stopAfterMinutes;
+    }
+    if (!optionsInitialized) {
+      optionsInitialized = true;
+      showAdvanced = hasNonDefaultOptions(next.options);
     }
     scheduleStatePoll(next.isRefreshing);
     setClockActive(next.isRefreshing);
@@ -259,7 +307,7 @@
 
   <section class="mt-3 space-y-1.5">
     <label class="block text-[11px] font-semibold text-base-content/65" for="interval">{t('intervalLabel')}</label>
-    <div class="input interval-field h-10 min-h-10 w-full gap-2 bg-base-100 pr-1.5">
+    <div class="input h-10 min-h-10 w-full gap-2 bg-base-100 pr-1.5">
       <Timer size={15} class="text-base-content/50" aria-hidden="true" />
       <input
         class="grow text-sm font-semibold tabular-nums"
@@ -269,8 +317,14 @@
         max={maxIntervalInput}
         step={selectedUnit.step}
         inputmode="decimal"
+        {@attach autofocus}
         bind:value={intervalInput}
         disabled={isActive || busy}
+        onkeydown={(event) => {
+          if (event.key === 'Enter' && canStart) {
+            void handleStart();
+          }
+        }}
       />
       <button
         class="btn btn-sm h-7 min-h-7 rounded-md border-0 bg-base-200 px-2.5 text-xs font-bold uppercase tracking-wide text-base-content/70 shadow-none hover:bg-base-300"
@@ -283,6 +337,102 @@
         {selectedUnit.label}
       </button>
     </div>
+  </section>
+
+  <section class="mt-2.5">
+    <button
+      class="btn btn-ghost btn-sm flex h-8 min-h-8 w-full items-center justify-between px-2 text-xs font-semibold text-base-content/70 hover:bg-base-200"
+      type="button"
+      onclick={() => (showAdvanced = !showAdvanced)}
+      aria-expanded={showAdvanced}
+      aria-controls="advanced-panel"
+    >
+      <span class="flex items-center gap-1.5">
+        <SlidersHorizontal size={14} aria-hidden="true" />
+        Advanced
+      </span>
+      <ChevronDown size={15} class={['transition-transform duration-200', showAdvanced && 'rotate-180']} aria-hidden="true" />
+    </button>
+
+    {#if showAdvanced}
+      <div
+        id="advanced-panel"
+        class="mt-2 space-y-2.5 rounded-lg border border-base-200 bg-base-200/35 p-2.5"
+        transition:slide={{ duration: 200 }}
+      >
+        <label class="flex cursor-pointer items-center justify-between gap-3">
+          <span class="flex min-w-0 flex-col">
+            <span class="text-xs font-semibold">Hard reload</span>
+            <span class="text-[10px] leading-tight text-base-content/55">Bypass the cache on each refresh</span>
+          </span>
+          <input class="toggle toggle-sm toggle-primary" type="checkbox" bind:checked={bypassCache} disabled={optionsDisabled} />
+        </label>
+
+        <label class="flex cursor-pointer items-center justify-between gap-3">
+          <span class="flex min-w-0 flex-col">
+            <span class="text-xs font-semibold">Refresh immediately</span>
+            <span class="text-[10px] leading-tight text-base-content/55">Run the first refresh on start</span>
+          </span>
+          <input class="toggle toggle-sm toggle-primary" type="checkbox" bind:checked={refreshImmediately} disabled={optionsDisabled} />
+        </label>
+
+        <div class="h-px bg-base-300/70"></div>
+
+        <div class="flex items-center justify-between gap-3">
+          <label class="flex min-w-0 flex-col" for="max-refreshes">
+            <span class="text-xs font-semibold">Maximum refreshes</span>
+            <span class="text-[10px] leading-tight text-base-content/55">Stop after this many</span>
+          </label>
+          <input
+            class="input input-sm h-8 w-24 bg-base-100 text-right text-xs font-semibold tabular-nums"
+            id="max-refreshes"
+            type="number"
+            min="1"
+            max={MAX_REFRESHES}
+            step="1"
+            inputmode="numeric"
+            placeholder="Unlimited"
+            bind:value={maxRefreshesInput}
+            disabled={optionsDisabled}
+          />
+        </div>
+
+        <div class="flex items-center justify-between gap-3">
+          <label class="flex min-w-0 flex-col" for="stop-after">
+            <span class="text-xs font-semibold">Time limit</span>
+            <span class="text-[10px] leading-tight text-base-content/55">Stop after this long</span>
+          </label>
+          <div class="flex items-center gap-1.5">
+            <input
+              class="input input-sm h-8 w-20 bg-base-100 text-right text-xs font-semibold tabular-nums"
+              id="stop-after"
+              type="number"
+              min="0"
+              max={MAX_STOP_AFTER_MINUTES}
+              step="1"
+              inputmode="decimal"
+              placeholder="Never"
+              bind:value={stopAfterInput}
+              disabled={optionsDisabled}
+            />
+            <span class="text-[10px] font-bold uppercase tracking-wide text-base-content/45">min</span>
+          </div>
+        </div>
+
+        {#if canResetOptions}
+          <div class="flex justify-end pt-0.5">
+            <button
+              class="btn btn-ghost btn-xs h-6 min-h-6 gap-1 px-2 text-[11px] font-medium text-base-content/55 hover:bg-base-200"
+              type="button"
+              onclick={resetOptions}
+            >
+              <RotateCcw size={12} aria-hidden="true" />
+              Reset
+            </button>
+          </div>
+        {/if}
+      </div>
+    {/if}
   </section>
 
   <div class="mt-3 grid grid-cols-2 gap-2">
@@ -305,7 +455,14 @@
     {:else if refreshState?.canRefresh}
       <div class="flex items-center justify-between rounded-lg border border-base-200 bg-base-200/55 px-3 py-2 text-xs" aria-live="polite">
         <span class="font-medium text-base-content/60">{isActive ? t('nextRefresh') : t('intervalLabel')}</span>
-        <strong class="font-bold tabular-nums text-base-content">{isActive ? remainingText : intervalSummary}</strong>
+        <span class="flex items-center gap-2">
+          {#if isActive && refreshState.options.maxRefreshes !== null}
+            <span class="font-semibold tabular-nums text-base-content/55">
+              {refreshState.refreshCount}/{refreshState.options.maxRefreshes}
+            </span>
+          {/if}
+          <strong class="font-bold tabular-nums text-base-content">{isActive ? remainingText : intervalSummary}</strong>
+        </span>
       </div>
     {:else}
       <div class="alert alert-warning alert-soft min-h-0 gap-2 px-2.5 py-1.5 text-xs">

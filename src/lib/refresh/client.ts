@@ -1,4 +1,5 @@
 import { DEFAULT_INTERVAL_SECONDS } from './interval';
+import { DEFAULT_OPTIONS, type RefreshOptions } from './options';
 import type { RefreshRequest, RefreshResponse, RefreshState } from './types';
 
 const previewState: RefreshState = {
@@ -6,15 +7,17 @@ const previewState: RefreshState = {
   isRefreshing: false,
   intervalSeconds: DEFAULT_INTERVAL_SECONDS,
   remainingMs: null,
-  nextRefreshAt: null
+  nextRefreshAt: null,
+  options: DEFAULT_OPTIONS,
+  refreshCount: 0
 };
 
 export function getPopupState(): Promise<RefreshState> {
   return sendMessage<RefreshState>({ type: 'popup:get-state' }, previewState);
 }
 
-export function startRefresh(intervalSeconds: number): Promise<RefreshState> {
-  return sendMessage<RefreshState>({ type: 'refresh:start', intervalSeconds }, previewState);
+export function startRefresh(intervalSeconds: number, options: RefreshOptions): Promise<RefreshState> {
+  return sendMessage<RefreshState>({ type: 'refresh:start', intervalSeconds, options }, previewState);
 }
 
 export function stopRefresh(): Promise<RefreshState> {
