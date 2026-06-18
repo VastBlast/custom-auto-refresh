@@ -1,0 +1,76 @@
+@import "tailwindcss";
+@plugin "daisyui" {
+  themes: refresh --default;
+  include: button, input, badge, alert, tooltip, toggle;
+  logs: false;
+}
+@plugin "daisyui/theme" {
+  name: "refresh";
+  default: true;
+  prefersdark: false;
+  color-scheme: light;
+
+  /* Clean cool-slate neutrals — no green tint. */
+  --color-base-100: oklch(99.3% 0.0025 264);
+  --color-base-200: oklch(97% 0.004 264);
+  --color-base-300: oklch(92.6% 0.007 264);
+  --color-base-content: oklch(27% 0.021 264);
+  /* Emerald = the primary "go" action (Start). */
+  --color-primary: oklch(56% 0.142 156);
+  --color-primary-content: oklch(99% 0.012 156);
+  --color-secondary: oklch(48% 0.04 256);
+  --color-secondary-content: oklch(98% 0.01 256);
+  /* Brand red — matches the toolbar mark. */
+  --color-accent: oklch(63% 0.2 27);
+  --color-accent-content: oklch(99% 0.012 27);
+  --color-neutral: oklch(31% 0.022 264);
+  --color-neutral-content: oklch(97% 0.005 264);
+  --color-info: oklch(60% 0.13 235);
+  --color-info-content: oklch(99% 0.01 235);
+  --color-success: oklch(58% 0.14 158);
+  --color-success-content: oklch(99% 0.012 158);
+  --color-warning: oklch(76% 0.14 70);
+  --color-warning-content: oklch(28% 0.05 70);
+  --color-error: oklch(57% 0.205 26);
+  --color-error-content: oklch(99% 0.012 26);
+
+  --radius-selector: 0.5rem;
+  --radius-field: 0.625rem;
+  --radius-box: 0.875rem;
+  --size-selector: 0.21875rem;
+  --size-field: 0.21875rem;
+  --border: 1px;
+  --depth: 1;
+  --noise: 0;
+}
+
+@layer base {
+  :root {
+    color-scheme: light;
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 14px;
+    line-height: 1.35;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  html,
+  body,
+  #app {
+    min-width: 326px;
+    margin: 0;
+  }
+
+  body {
+    overflow: hidden;
+    background: var(--color-base-100);
+  }
+}
+
+/* Unlayered: beats daisyUI's layered focus rules regardless of specificity, so
+   controls never draw a focus outline/ring on click or keyboard focus. */
+:focus,
+:focus-visible,
+:focus-within {
+  outline: none;
+}

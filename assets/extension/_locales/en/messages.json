@@ -1,0 +1,15 @@
+{
+  "extensionName": { "message": "Custom Auto Refresh" },
+  "extensionShortName": { "message": "Auto Refresh" },
+  "extensionDescription": { "message": "Refresh the current tab on a custom interval." },
+  "actionTitle": { "message": "Custom Auto Refresh" },
+  "intervalLabel": { "message": "Interval" },
+  "start": { "message": "Start" },
+  "stop": { "message": "Stop" },
+  "active": { "message": "Refreshing" },
+  "idle": { "message": "Idle" },
+  "nextRefresh": { "message": "Next refresh" },
+  "cannotRefresh": { "message": "This page cannot be refreshed by the extension." },
+  "invalidInterval": { "message": "Enter a valid refresh interval." },
+  "sourceCode": { "message": "Source Code" }
+}

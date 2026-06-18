@@ -1,0 +1,40 @@
+{
+  "name": "custom-auto-refresh",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite",
+    "build": "npm run icons && vite build && node scripts/build-extension.mjs",
+    "build:check": "npm run check && npm run test && npm run build",
+    "build:prod": "npm run icons && vite build --mode production && node scripts/build-extension.mjs",
+    "preview": "vite preview",
+    "icons": "node scripts/generate-icons.mjs",
+    "store:screenshots": "node scripts/generate-store-screenshots.mjs",
+    "check": "svelte-check --tsconfig ./tsconfig.json",
+    "test": "npm run test:types && vitest run",
+    "test:types": "tsc -p tsconfig.test.json",
+    "clean": "node scripts/clean.mjs",
+    "package": "npm run clean && npm run build:prod && node scripts/package-extension.mjs"
+  },
+  "dependencies": {
+    "@lucide/svelte": "^1.18.0"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^7.1.2",
+    "@tailwindcss/vite": "^4.3.1",
+    "@tsconfig/svelte": "^5.0.2",
+    "@types/chrome": "^0.1.43",
+    "@types/node": "^25.9.3",
+    "daisyui": "^5.5.23",
+    "fflate": "^0.8.3",
+    "sharp": "^0.35.1",
+    "svelte": "^5.56.3",
+    "svelte-check": "^4.6.0",
+    "tailwindcss": "^4.3.1",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.16",
+    "vitest": "^4.1.9"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "extensionName": { "message": "Пользовательское автообновление" },
+  "extensionShortName": { "message": "Автообновление" },
+  "extensionDescription": { "message": "Обновляйте текущую вкладку с заданным интервалом." },
+  "actionTitle": { "message": "Пользовательское автообновление" },
+  "intervalLabel": { "message": "Интервал" },
+  "start": { "message": "Старт" },
+  "stop": { "message": "Стоп" },
+  "active": { "message": "Обновляется" },
+  "idle": { "message": "Ожидание" },
+  "nextRefresh": { "message": "Следующее обновление" },
+  "cannotRefresh": { "message": "Расширение не может обновить эту страницу." },
+  "invalidInterval": { "message": "Введите допустимый интервал обновления." },
+  "sourceCode": { "message": "Исходный код" }
+}

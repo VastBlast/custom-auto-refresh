@@ -1,0 +1,15 @@
+{
+  "extensionName": { "message": "Atualização automática personalizada" },
+  "extensionShortName": { "message": "Auto atualizar" },
+  "extensionDescription": { "message": "Atualize a guia atual em um intervalo personalizado." },
+  "actionTitle": { "message": "Atualização automática personalizada" },
+  "intervalLabel": { "message": "Intervalo" },
+  "start": { "message": "Iniciar" },
+  "stop": { "message": "Parar" },
+  "active": { "message": "Atualizando" },
+  "idle": { "message": "Ocioso" },
+  "nextRefresh": { "message": "Próxima atualização" },
+  "cannotRefresh": { "message": "A extensão não pode atualizar esta página." },
+  "invalidInterval": { "message": "Digite um intervalo de atualização válido." },
+  "sourceCode": { "message": "Código-fonte" }
+}

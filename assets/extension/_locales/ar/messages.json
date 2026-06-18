@@ -1,0 +1,15 @@
+{
+  "extensionName": { "message": "تحديث تلقائي مخصص" },
+  "extensionShortName": { "message": "تحديث تلقائي" },
+  "extensionDescription": { "message": "حدّث علامة التبويب الحالية بفاصل زمني مخصص." },
+  "actionTitle": { "message": "تحديث تلقائي مخصص" },
+  "intervalLabel": { "message": "الفاصل" },
+  "start": { "message": "بدء" },
+  "stop": { "message": "إيقاف" },
+  "active": { "message": "يتم التحديث" },
+  "idle": { "message": "خامل" },
+  "nextRefresh": { "message": "التحديث التالي" },
+  "cannotRefresh": { "message": "لا يمكن للإضافة تحديث هذه الصفحة." },
+  "invalidInterval": { "message": "أدخل فاصل تحديث صالحًا." },
+  "sourceCode": { "message": "رمز المصدر" }
+}

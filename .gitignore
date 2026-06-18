@@ -1,3 +1,16 @@
-/.vscode
-/testing
-/listing-pics
+# Dependencies
+node_modules
+
+# Build output
+dist
+artifacts
+
+# Local files
+.tmp
+*.local
+*.log
+
+# Editor files
+.vscode
+.idea
+.DS_Store
