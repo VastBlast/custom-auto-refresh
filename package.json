@@ -1,15 +1,15 @@
 {
   "name": "custom-auto-refresh",
   "private": true,
-  "version": "2.4.0",
+  "version": "0.0.1",
   "type": "module",
   "license": "MIT",
   "scripts": {
-    "dev": "vite --host 127.0.0.1",
+    "dev": "vite",
     "build": "npm run icons && vite build && node scripts/build-extension.mjs",
     "build:check": "npm run check && npm run test && npm run build",
     "build:prod": "npm run icons && vite build --mode production && node scripts/build-extension.mjs",
-    "preview": "vite preview --host 127.0.0.1",
+    "preview": "vite preview",
     "icons": "node scripts/generate-icons.mjs",
     "store:screenshots": "node scripts/generate-store-screenshots.mjs",
     "check": "svelte-check --tsconfig ./tsconfig.json",
