@@ -419,8 +419,11 @@
           </div>
         </div>
 
+        <!-- this is to fix transition lag because it adds 2.5 margin bottom when reset button is shown and removes when its hidden -->
+        <div class="-mb-2.5!"></div>
+
         {#if canResetOptions}
-          <div class="flex justify-end pt-0.5" transition:slide={{ duration: 150 }}>
+          <div class="flex justify-end pt-0.5 mt-5" transition:slide={{ duration: 150 }}>
             <button
               class="btn btn-ghost btn-xs h-6 min-h-6 gap-1 px-2 text-[11px] font-medium text-base-content/55 hover:bg-base-200"
               type="button"
