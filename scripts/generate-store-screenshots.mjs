@@ -66,6 +66,17 @@ const screenshots = [
     unit: 'ms',
     remaining: '0s',
     badge: '0'
+  },
+  {
+    id: '04-advanced-options',
+    headline: ['Advanced options', 'full customization.'],
+    body: ['Hard reload, a refresh cap, and an', 'auto-stop timer — all optional.'],
+    active: false,
+    interval: '5',
+    unit: 'sec',
+    remaining: '--',
+    badge: '',
+    advanced: { bypassCache: true, refreshImmediately: false, maxRefreshes: '50', stopAfter: '30' }
   }
 ];
 
@@ -92,6 +103,8 @@ async function writeImage(dir, id, markup, size) {
 
 function renderScreenshot(scenario) {
   const { width, height } = screenshotSize;
+  const popup = scenario.advanced ? advancedPopupShot(scenario) : popupShot(scenario, { shadow: true });
+  const frameHeight = scenario.advanced ? 600 : 500;
   return svg(screenshotSize, `
     ${defs()}
     ${pageBackground(width, height)}
@@ -101,11 +114,11 @@ function renderScreenshot(scenario) {
       ${bodyText(scenario.body, 0, 250, 23)}
       ${chipRow(features, 0, 348)}
     </g>
-    ${browserWindow(620, 150, 588, 500, scenario)}
+    ${browserWindow(620, (height - frameHeight) / 2, 588, frameHeight, scenario, popup)}
   `);
 }
 
-function browserWindow(x, y, w, h, scenario) {
+function browserWindow(x, y, w, h, scenario, popup) {
   const inner = w - 28;
   return `<g transform="translate(${x} ${y})">
     <rect width="${w}" height="${h}" rx="22" fill="${palette.panel}" stroke="${palette.line}" filter="url(#cardShadow)"/>
@@ -116,7 +129,7 @@ function browserWindow(x, y, w, h, scenario) {
     <circle cx="124" cy="28" r="4.5" fill="none" stroke="${palette.faint}" stroke-width="1.4"/>
     <g transform="translate(${w - 64} 9)">${toolbarIcon(scenario, 1)}</g>
     <g transform="translate(28 74)">${pageContent(inner)}</g>
-    <g transform="translate(${w - 326 - 18} 66)">${popupShot(scenario, { shadow: true })}</g>
+    <g transform="translate(${w - 326 - 18} 66)">${popup}</g>
   </g>`;
 }
 
@@ -207,45 +220,101 @@ function toolbarIcon(scenario, scale) {
 }
 
 function popupShot(scenario, options = {}) {
-  const active = scenario.active;
   const filter = options.shadow ? ' filter="url(#cardShadow)"' : '';
-  const status = active
-    ? { label: 'Refreshing', dot: palette.go, text: palette.goInk, fill: palette.goSoft }
-    : { label: 'Idle', dot: palette.faint, text: palette.muted, fill: palette.panelAlt };
-  const statusWidth = status.label.length * 6 + 26;
-  const footerLabel = active ? 'Next refresh' : 'Interval';
-  const footerValue = active ? scenario.remaining : durationLabel(scenario);
-
   return `<g${filter}>
     <rect width="326" height="222" rx="16" fill="${palette.panel}" stroke="${palette.line}"/>
     <g transform="translate(14 16)">
-      <image href="${active ? icons.active : icons.inactive}" x="0" y="-2" width="32" height="32"/>
-      <text x="42" y="11" fill="${palette.ink}" font-family="${FONT}" font-size="14" font-weight="800">Custom Auto Refresh</text>
-      <g transform="translate(42 18)">
-        <rect width="${statusWidth}" height="16" rx="8" fill="${status.fill}"/>
-        <circle cx="10" cy="8" r="2.6" fill="${status.dot}"/>
-        <text x="18" y="11.5" fill="${status.text}" font-family="${FONT}" font-size="9.5" font-weight="700">${status.label}</text>
-      </g>
-      <g transform="translate(232 0)">
-        ${githubMark(0, 0, 13, palette.muted)}
-        <text x="18" y="11" fill="${palette.muted}" font-family="${FONT}" font-size="11" font-weight="650">Source</text>
-      </g>
-
-      <text x="0" y="58" fill="${palette.muted}" font-family="${FONT}" font-size="11" font-weight="650">Interval</text>
-      <rect x="0" y="66" width="298" height="40" rx="10" fill="${palette.panel}" stroke="${palette.line}"/>
-      ${timerIcon(13, 80, 13, palette.faint)}
-      <text x="34" y="91" fill="${palette.ink}" font-family="${FONT}" font-size="17" font-weight="800">${escapeXml(scenario.interval)}</text>
-      <rect x="246" y="73" width="44" height="26" rx="7" fill="${palette.panelAlt}"/>
-      <text x="268" y="90" text-anchor="middle" fill="${palette.muted}" font-family="${FONT}" font-size="11" font-weight="800">${escapeXml(scenario.unit.toUpperCase())}</text>
-
-      ${button(0, 118, active ? palette.panelAlt : palette.go, active ? palette.faint : '#ffffff', 'Start', 'play', !active)}
-      ${button(153, 118, active ? palette.stopSoft : palette.panelAlt, active ? palette.stopInk : palette.faint, 'Stop', 'stop', active)}
-
-      <rect x="0" y="170" width="298" height="30" rx="9" fill="${palette.panelAlt}"/>
-      <text x="12" y="189" fill="${palette.muted}" font-family="${FONT}" font-size="11" font-weight="600">${footerLabel}</text>
-      <text x="286" y="189" text-anchor="end" fill="${palette.ink}" font-family="${FONT}" font-size="12" font-weight="800">${escapeXml(footerValue)}</text>
+      ${popupHeader(scenario)}
+      ${intervalRow(scenario)}
+      ${actionButtons(scenario.active, 118)}
+      ${footerPill(scenario, 170)}
     </g>
   </g>`;
+}
+
+// Expanded popup with the Advanced panel open, for the advanced-options shot.
+function advancedPopupShot(scenario) {
+  return `<g filter="url(#cardShadow)">
+    <rect width="326" height="466" rx="16" fill="${palette.panel}" stroke="${palette.line}"/>
+    <g transform="translate(14 16)">
+      ${popupHeader(scenario)}
+      ${intervalRow(scenario)}
+      ${advancedToggle(120)}
+      ${advancedPanel(scenario.advanced, 150)}
+      ${actionButtons(scenario.active, 360)}
+      ${footerPill(scenario, 412)}
+    </g>
+  </g>`;
+}
+
+function popupHeader(scenario) {
+  const active = scenario.active;
+  const status = active
+    ? { label: 'Refreshing', dot: palette.go, text: palette.goInk, fill: palette.goSoft }
+    : { label: 'Idle', dot: palette.faint, text: palette.muted, fill: palette.panelAlt };
+  return `<image href="${active ? icons.active : icons.inactive}" x="0" y="-2" width="32" height="32"/>
+    <text x="42" y="11" fill="${palette.ink}" font-family="${FONT}" font-size="14" font-weight="800">Custom Auto Refresh</text>
+    <g transform="translate(42 18)">
+      <rect width="${status.label.length * 6 + 26}" height="16" rx="8" fill="${status.fill}"/>
+      <circle cx="10" cy="8" r="2.6" fill="${status.dot}"/>
+      <text x="18" y="11.5" fill="${status.text}" font-family="${FONT}" font-size="9.5" font-weight="700">${status.label}</text>
+    </g>
+    <g transform="translate(232 0)">
+      ${githubMark(0, 0, 13, palette.muted)}
+      <text x="18" y="11" fill="${palette.muted}" font-family="${FONT}" font-size="11" font-weight="650">Source</text>
+    </g>`;
+}
+
+function intervalRow(scenario) {
+  return `<text x="0" y="58" fill="${palette.muted}" font-family="${FONT}" font-size="11" font-weight="650">Interval</text>
+    <rect x="0" y="66" width="298" height="40" rx="10" fill="${palette.panel}" stroke="${palette.line}"/>
+    ${timerIcon(13, 80, 13, palette.faint)}
+    <text x="34" y="91" fill="${palette.ink}" font-family="${FONT}" font-size="17" font-weight="800">${escapeXml(scenario.interval)}</text>
+    <rect x="246" y="73" width="44" height="26" rx="7" fill="${palette.panelAlt}"/>
+    <text x="268" y="90" text-anchor="middle" fill="${palette.muted}" font-family="${FONT}" font-size="11" font-weight="800">${escapeXml(scenario.unit.toUpperCase())}</text>`;
+}
+
+function actionButtons(active, y) {
+  return `${button(0, y, active ? palette.panelAlt : palette.go, active ? palette.faint : '#ffffff', 'Start', 'play', !active)}
+    ${button(153, y, active ? palette.stopSoft : palette.panelAlt, active ? palette.stopInk : palette.faint, 'Stop', 'stop', active)}`;
+}
+
+function footerPill(scenario, y) {
+  const active = scenario.active;
+  const label = active ? 'Next refresh' : 'Interval';
+  const value = active ? scenario.remaining : durationLabel(scenario);
+  return `<rect x="0" y="${y}" width="298" height="30" rx="9" fill="${palette.panelAlt}"/>
+    <text x="12" y="${y + 19}" fill="${palette.muted}" font-family="${FONT}" font-size="11" font-weight="600">${label}</text>
+    <text x="286" y="${y + 19}" text-anchor="end" fill="${palette.ink}" font-family="${FONT}" font-size="12" font-weight="800">${escapeXml(value)}</text>`;
+}
+
+function advancedToggle(y) {
+  return `<g transform="translate(0 ${y})">
+    ${slidersGlyph(0, 0, palette.muted)}
+    <text x="22" y="11" fill="${palette.ink}" font-family="${FONT}" font-size="12" font-weight="700">Advanced</text>
+    ${chevronGlyph(288, 4, palette.muted, true)}
+  </g>`;
+}
+
+function advancedPanel(options, y) {
+  return `<g transform="translate(0 ${y})">
+    <rect x="0" y="0" width="298" height="198" rx="10" fill="${palette.panelAlt}" stroke="${palette.line}"/>
+    ${optionLabel(14, 14, 'Hard reload', 'Bypass the cache on each refresh')}
+    ${toggleGlyph(244, 18, options.bypassCache)}
+    ${optionLabel(14, 50, 'Refresh immediately', 'Run the first refresh on start')}
+    ${toggleGlyph(244, 54, options.refreshImmediately)}
+    <line x1="14" y1="92" x2="284" y2="92" stroke="${palette.line}"/>
+    ${optionLabel(14, 102, 'Maximum refreshes', 'Stop after this many')}
+    ${valueField(284, 100, options.maxRefreshes, '')}
+    ${optionLabel(14, 138, 'Time limit', 'Stop after this long')}
+    ${valueField(284, 136, options.stopAfter, 'MIN')}
+    ${resetControl(284, 178)}
+  </g>`;
+}
+
+function optionLabel(x, y, label, sub) {
+  return `<text x="${x}" y="${y + 11}" fill="${palette.ink}" font-family="${FONT}" font-size="11.5" font-weight="700">${label}</text>
+    <text x="${x}" y="${y + 25}" fill="${palette.muted}" font-family="${FONT}" font-size="9" font-weight="500">${sub}</text>`;
 }
 
 function button(x, y, fill, fg, label, glyph, emphasised) {
@@ -282,6 +351,41 @@ function playIcon(x, y, size, color) {
 
 function stopIcon(x, y, size, color) {
   return `<rect x="${x}" y="${y}" width="${size}" height="${size}" rx="2.5" fill="${color}"/>`;
+}
+
+function slidersGlyph(x, y, color) {
+  return `<g transform="translate(${x} ${y})" stroke="${color}" stroke-width="1.5" stroke-linecap="round">
+    <line x1="0" y1="3" x2="14" y2="3"/>
+    <line x1="0" y1="11" x2="14" y2="11"/>
+    <circle cx="5" cy="3" r="2.3" fill="${palette.panelAlt}"/>
+    <circle cx="10" cy="11" r="2.3" fill="${palette.panelAlt}"/>
+  </g>`;
+}
+
+function chevronGlyph(x, y, color, up) {
+  const d = up ? 'M0 5 5 0 10 5' : 'M0 0 5 5 10 0';
+  return `<path transform="translate(${x} ${y})" d="${d}" fill="none" stroke="${color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>`;
+}
+
+function toggleGlyph(x, y, on) {
+  return `<rect x="${x}" y="${y}" width="30" height="16" rx="8" fill="${on ? palette.go : '#d2d6dd'}"/>
+    <circle cx="${on ? x + 22 : x + 8}" cy="${y + 8}" r="5.5" fill="#ffffff"/>`;
+}
+
+function valueField(rightX, y, value, suffix) {
+  const boxW = 56;
+  const boxX = rightX - (suffix ? 26 : 0) - boxW;
+  return `<rect x="${boxX}" y="${y}" width="${boxW}" height="26" rx="7" fill="${palette.panel}" stroke="${palette.line}"/>
+    <text x="${boxX + boxW - 10}" y="${y + 17}" text-anchor="end" fill="${palette.ink}" font-family="${FONT}" font-size="12" font-weight="800">${escapeXml(value)}</text>
+    ${suffix ? `<text x="${rightX}" y="${y + 17}" text-anchor="end" fill="${palette.faint}" font-family="${FONT}" font-size="9" font-weight="800">${suffix}</text>` : ''}`;
+}
+
+function resetControl(rightX, y) {
+  return `<g transform="translate(${rightX - 44} ${y})" fill="none" stroke="${palette.muted}" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M1.5 4.2A4 4 0 1 1 1.1 6.6"/>
+      <path d="M1.5 1.4V4.2H4.3"/>
+    </g>
+    <text x="${rightX}" y="${y + 9}" text-anchor="end" fill="${palette.muted}" font-family="${FONT}" font-size="11" font-weight="600">Reset</text>`;
 }
 
 // --- Layout primitives ----------------------------------------------------
