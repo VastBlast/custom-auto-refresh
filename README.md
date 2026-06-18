@@ -62,4 +62,4 @@ Pushing a tag like `v2.4.1` runs the release workflow. The workflow applies the 
 
 ## License
 
-GPL-3.0-only
+MIT
