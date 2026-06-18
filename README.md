@@ -1,23 +1,31 @@
 # Custom Auto Refresh
 
-Browser extension for refreshing the current tab on a custom interval.
+Local-first, lightweight browser extension for refreshing the current tab on your schedule.
 
-Custom Auto Refresh is local-first and does not track users, collect analytics, or send browsing data to a remote service. Refresh schedules are stored locally by the browser so active timers can recover when the extension context restarts.
+Custom Auto Refresh is configurable and written in Svelte. It does not track users, collect analytics, or send browsing data to a remote service.
+
+Refresh schedules and custom settings are stored locally by the browser, so active timers can recover when the extension context restarts.
 
 ## Install
 
 [![Install from Chrome Web Store](https://img.shields.io/badge/Install%20from-Chrome%20Web%20Store-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white)](https://chrome.google.com/webstore/detail/lpfhikbcgmboakfdiedcccfofbejaihd)
-[![Install from Microsoft Edge Add-ons](https://img.shields.io/badge/Install%20from-Microsoft%20Edge%20Add--ons-0078D7?style=for-the-badge&logo=microsoftedge&logoColor=white)](https://microsoftedge.microsoft.com/addons/detail/kimgcjmijjjihjikhlkpoheegdddpkaa)
 
 ## Features
 
-- Start and stop automatic refreshes for the active tab.
-- Use seconds, milliseconds, minutes, or hours for intervals up to seven days.
-- See the next refresh countdown in the extension badge.
+- Start or stop automatic refreshes for the active tab.
+- Set intervals in milliseconds, seconds, minutes, or hours.
+- Use intervals up to seven days.
+- Customize refresh jobs with hard reload, immediate refresh, maximum refreshes, and time limits.
+- Watch the next refresh countdown in the extension badge.
+- Lightweight popup UI written in Svelte and TypeScript.
 - Build separate packages for Chrome, Edge, and Firefox from one source tree.
 - Localized browser UI strings through extension `_locales`.
 
 ## Development
+
+The extension UI is written in Svelte 5 and built with Vite.
+
+Shared TypeScript modules handle interval parsing, refresh options, browser messaging, and the background service worker.
 
 ```sh
 npm install
