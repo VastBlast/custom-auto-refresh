@@ -216,15 +216,21 @@
   <header class="flex items-center justify-between gap-2">
     <div class="flex min-w-0 items-center gap-2">
       <img
-        class="size-8 shrink-0 rounded-lg"
+        class="size-8 shrink-0 drop-shadow-sm"
         src={isActive ? '/icons/active/icon32.png' : '/icons/inactive/icon32.png'}
         alt=""
         aria-hidden="true"
       />
       <div class="min-w-0">
         <h1 class="truncate text-sm font-bold leading-tight">{t('extensionName')}</h1>
-        <div class="mt-0.5 flex items-center gap-1.5">
-          <span class={['badge badge-soft badge-xs', isActive ? 'badge-success' : 'badge-neutral']}>
+        <div class="mt-1 flex items-center gap-1.5">
+          <span class={['badge badge-soft badge-xs gap-1.5 pl-1.5 font-medium', isActive ? 'badge-success' : 'badge-neutral']}>
+            <span class="relative flex size-1.5">
+              {#if isActive}
+                <span class="absolute inline-flex size-full animate-ping rounded-full bg-success opacity-70"></span>
+              {/if}
+              <span class={['relative inline-flex size-1.5 rounded-full', isActive ? 'bg-success' : 'bg-base-content/40']}></span>
+            </span>
             {statusText}
           </span>
         </div>
@@ -267,7 +273,7 @@
         disabled={isActive || busy}
       />
       <button
-        class="btn btn-ghost h-7 min-h-7 px-2 text-xs font-bold uppercase tracking-normal text-base-content/65 hover:bg-base-200"
+        class="btn btn-sm h-7 min-h-7 rounded-md border-0 bg-base-200 px-2.5 text-xs font-bold uppercase tracking-wide text-base-content/70 shadow-none hover:bg-base-300"
         type="button"
         onclick={switchIntervalUnit}
         disabled={!canSwitchUnit}
@@ -297,7 +303,7 @@
         <span class="min-w-0">{error}</span>
       </div>
     {:else if refreshState?.canRefresh}
-      <div class="flex items-center justify-between rounded-lg bg-base-200 px-2.5 py-2 text-xs" aria-live="polite">
+      <div class="flex items-center justify-between rounded-lg border border-base-200 bg-base-200/55 px-3 py-2 text-xs" aria-live="polite">
         <span class="font-medium text-base-content/60">{isActive ? t('nextRefresh') : t('intervalLabel')}</span>
         <strong class="font-bold tabular-nums text-base-content">{isActive ? remainingText : intervalSummary}</strong>
       </div>

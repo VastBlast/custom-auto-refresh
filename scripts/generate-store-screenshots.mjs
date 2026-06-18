@@ -4,22 +4,29 @@ import sharp from 'sharp';
 const screenshotDir = 'assets/store/screenshots';
 const promoDir = 'assets/store/promotional';
 const screenshotSize = { width: 1280, height: 800 };
+const FONT = "Inter, 'Segoe UI', system-ui, Arial, sans-serif";
 
+// Clean slate + red/emerald palette, matched to the popup theme. No olive.
 const palette = {
-  paper: '#f7f8f2',
-  paperAlt: '#edf2ea',
-  surface: '#ffffff',
-  ink: '#17211c',
-  muted: '#5b6861',
-  faint: '#dbe4da',
-  green: '#187246',
-  greenDark: '#0f3f2e',
-  greenSoft: '#dcefe2',
-  amber: '#c47537',
-  amberSoft: '#f1dfca',
-  red: '#bd4b42',
-  redSoft: '#f1d7d2',
-  blue: '#456179'
+  bg: '#f6f7f9',
+  bgDeep: '#eceef3',
+  panel: '#ffffff',
+  panelAlt: '#f3f4f7',
+  line: '#e6e8ee',
+  hairline: '#eef0f4',
+  ink: '#222a37',
+  muted: '#6b7480',
+  faint: '#aab1bd',
+  brand: '#e74c3c',
+  brandSoft: '#fcebe9',
+  go: '#1f9d5f',
+  goSoft: '#e7f5ed',
+  goInk: '#137a44',
+  stop: '#e0493d',
+  stopSoft: '#fce4e1',
+  stopInk: '#bd3b30',
+  badge: '#1a7f4b',
+  traffic: ['#f0655a', '#f2b94a', '#5fc97e']
 };
 
 const icons = {
@@ -27,39 +34,38 @@ const icons = {
   inactive: await pngDataUri('assets/extension/icons/inactive/icon128.png')
 };
 
+const features = ['Per-tab control', 'Live countdown', 'No tracking'];
+
 const screenshots = [
   {
     id: '01-precise-control',
     headline: ['Set the interval.', 'Start the tab.'],
-    body: ['A compact popup for exact refresh timing', 'without page clutter.'],
+    body: ['A compact popup for exact refresh', 'timing — without the clutter.'],
     active: false,
     interval: '5',
     unit: 'sec',
     remaining: '--',
-    badge: '',
-    stat: '5s'
+    badge: ''
   },
   {
     id: '02-active-badge',
-    headline: ['Active icon.', 'Live badge.'],
-    body: ['The toolbar changes color and counts down', 'while refresh is running.'],
+    headline: ['A live badge', 'on the toolbar.'],
+    body: ['The icon turns active and counts down', 'while the refresh runs.'],
     active: true,
     interval: '15',
     unit: 'sec',
     remaining: '12s',
-    badge: '12',
-    stat: '12s'
+    badge: '12'
   },
   {
     id: '03-fast-refresh',
-    headline: ['Fast refresh', 'stays simple.'],
-    body: ['Use zero or short intervals, stop instantly,', 'and keep each tab separate.'],
+    headline: ['Fast refresh,', 'still simple.'],
+    body: ['Use zero or sub-second intervals,', 'and stop instantly any time.'],
     active: true,
     interval: '0',
     unit: 'ms',
     remaining: '0s',
-    badge: '0',
-    stat: '0s'
+    badge: '0'
   }
 ];
 
@@ -68,161 +74,194 @@ await rm(promoDir, { recursive: true, force: true });
 await mkdir(screenshotDir, { recursive: true });
 await mkdir(promoDir, { recursive: true });
 
-for (const screenshot of screenshots) {
-  const output = `${screenshotDir}/${screenshot.id}.png`;
-  await sharp(Buffer.from(renderScreenshot(screenshot))).png().toFile(output);
-  await assertImageSize(output, screenshotSize);
-  console.log(`Created ${output}`);
+for (const scenario of screenshots) {
+  await writeImage(screenshotDir, scenario.id, renderScreenshot(scenario), screenshotSize);
 }
 
-await writeImage('small-promo-tile', renderSmallPromo(), { width: 440, height: 280 });
-await writeImage('marquee-promo-tile', renderMarqueePromo(), { width: 1400, height: 560 });
+await writeImage(promoDir, 'small-promo-tile', renderSmallPromo(), { width: 440, height: 280 });
+await writeImage(promoDir, 'marquee-promo-tile', renderMarqueePromo(), { width: 1400, height: 560 });
 
-async function writeImage(id, svg, size) {
-  const output = `${promoDir}/${id}.png`;
-  await sharp(Buffer.from(svg)).png().toFile(output);
+async function writeImage(dir, id, markup, size) {
+  const output = `${dir}/${id}.png`;
+  await sharp(Buffer.from(markup)).png().toFile(output);
   await assertImageSize(output, size);
   console.log(`Created ${output}`);
 }
 
+// --- Screenshots ----------------------------------------------------------
+
 function renderScreenshot(scenario) {
+  const { width, height } = screenshotSize;
   return svg(screenshotSize, `
-    ${backgroundBands(screenshotSize.width, screenshotSize.height)}
-    <g transform="translate(72 104)">
-      ${headline(scenario.headline, 0, 0, 58)}
-      ${bodyText(scenario.body, 0, 178, 25)}
-      <g transform="translate(0 310)">
-        ${metricCard('Interval', intervalMetric(scenario), 0)}
-        ${metricCard('Badge', scenario.badge || 'Idle', 166)}
-        ${metricCard('Mode', scenario.active ? 'Active' : 'Ready', 332)}
-      </g>
+    ${defs()}
+    ${pageBackground(width, height)}
+    <g transform="translate(96 172)">
+      ${brandLockup(0, 0, 0.92)}
+      ${headline(scenario.headline, 0, 128, 54)}
+      ${bodyText(scenario.body, 0, 250, 23)}
+      ${chipRow(features, 0, 348)}
     </g>
-    <g transform="translate(612 92)">
-      ${browserFrame(scenario)}
-    </g>
+    ${browserWindow(620, 150, 588, 500, scenario)}
   `);
 }
 
-function intervalMetric(scenario) {
-  return durationLabel(scenario);
+function browserWindow(x, y, w, h, scenario) {
+  const inner = w - 28;
+  return `<g transform="translate(${x} ${y})">
+    <rect width="${w}" height="${h}" rx="22" fill="${palette.panel}" stroke="${palette.line}" filter="url(#cardShadow)"/>
+    <path d="M0 22a22 22 0 0 1 22-22h${w - 44}a22 22 0 0 1 22 22v32H0z" fill="${palette.panelAlt}"/>
+    <line x1="0" y1="54" x2="${w}" y2="54" stroke="${palette.line}"/>
+    ${[0, 1, 2].map((i) => `<circle cx="${26 + i * 22}" cy="27" r="6" fill="${palette.traffic[i]}"/>`).join('')}
+    <rect x="104" y="16" width="${w - 200}" height="24" rx="12" fill="${palette.panel}" stroke="${palette.line}"/>
+    <circle cx="124" cy="28" r="4.5" fill="none" stroke="${palette.faint}" stroke-width="1.4"/>
+    <g transform="translate(${w - 64} 9)">${toolbarIcon(scenario, 1)}</g>
+    <g transform="translate(28 74)">${pageContent(inner)}</g>
+    <g transform="translate(${w - 326 - 18} 66)">${popupShot(scenario, { shadow: true })}</g>
+  </g>`;
 }
 
+function pageContent(w) {
+  const card = (cx, fill) =>
+    `<rect x="${cx}" y="150" width="150" height="96" rx="14" fill="${fill}"/>`;
+  return `<g>
+    <rect width="${Math.min(180, w)}" height="30" rx="9" fill="${palette.panelAlt}"/>
+    <rect y="56" width="${Math.min(w, 300)}" height="13" rx="6.5" fill="${palette.hairline}"/>
+    <rect y="84" width="${Math.min(w, 250)}" height="13" rx="6.5" fill="${palette.hairline}"/>
+    <rect y="112" width="${Math.min(w, 200)}" height="13" rx="6.5" fill="${palette.hairline}"/>
+    ${card(0, palette.panelAlt)}
+    ${card(166, palette.hairline)}
+  </g>`;
+}
+
+// --- Promotional tiles ----------------------------------------------------
+
 function renderSmallPromo() {
-  const scenario = screenshots[1];
-  return svg({ width: 440, height: 280 }, `
-    <rect width="440" height="280" fill="${palette.greenDark}"/>
-    <path d="M0 196h440v84H0z" fill="${palette.green}"/>
-    <path d="M0 230h440v50H0z" fill="${palette.amber}" opacity="0.2"/>
-    <image href="${icons.active}" x="32" y="38" width="72" height="72"/>
-    <text x="124" y="62" fill="#fff" font-family="Inter,Arial,sans-serif" font-size="34" font-weight="850">Custom</text>
-    <text x="124" y="101" fill="#fff" font-family="Inter,Arial,sans-serif" font-size="34" font-weight="850">Auto Refresh</text>
-    <text x="34" y="150" fill="#d6e3dc" font-family="Inter,Arial,sans-serif" font-size="16" font-weight="650">Precise tab refresh controls.</text>
-    <g transform="translate(274 126) scale(0.42)">
-      ${popupShot(scenario, { shadow: false })}
-    </g>
+  const size = { width: 440, height: 280 };
+  const cx = size.width / 2;
+  return svg(size, `
+    ${defs()}
+    <rect width="${size.width}" height="${size.height}" fill="url(#bg)"/>
+    <image href="${icons.active}" x="${cx - 33}" y="66" width="66" height="66"/>
+    <text x="${cx}" y="182" text-anchor="middle" fill="${palette.ink}" font-family="${FONT}" font-size="30" font-weight="800">Custom Auto Refresh</text>
+    <text x="${cx}" y="212" text-anchor="middle" fill="${palette.muted}" font-family="${FONT}" font-size="15" font-weight="600">Precise refresh control for any tab.</text>
   `);
 }
 
 function renderMarqueePromo() {
-  const scenario = screenshots[1];
-  return svg({ width: 1400, height: 560 }, `
-    <rect width="1400" height="560" fill="${palette.paper}"/>
-    <path d="M0 0h1400v560H0z" fill="${palette.paper}"/>
-    <path d="M840 0h560v560H690z" fill="${palette.greenDark}"/>
-    <path d="M802 0h64l-188 560h-64z" fill="${palette.amber}" opacity="0.32"/>
-    <g transform="translate(80 108)">
-      <image href="${icons.active}" x="0" y="0" width="86" height="86"/>
-      <text x="0" y="146" fill="${palette.ink}" font-family="Inter,Arial,sans-serif" font-size="64" font-weight="880">Custom Auto Refresh</text>
-      <text x="2" y="196" fill="${palette.muted}" font-family="Inter,Arial,sans-serif" font-size="28" font-weight="650">Small popup. Clear badge. Fast per-tab refresh.</text>
-      <g transform="translate(2 250)">
-        ${featurePill('No tracking', 0, true)}
-        ${featurePill('Active icon', 154, true)}
-        ${featurePill('Zero interval', 322, true)}
-      </g>
+  const size = { width: 1400, height: 560 };
+  return svg(size, `
+    ${defs()}
+    ${pageBackground(size.width, size.height)}
+    <g transform="translate(96 132)">
+      ${brandLockup(0, 0, 1.18)}
+      <text x="2" y="150" fill="${palette.ink}" font-family="${FONT}" font-size="40" font-weight="800">Refresh any tab, on your schedule.</text>
+      <text x="2" y="196" fill="${palette.muted}" font-family="${FONT}" font-size="22" font-weight="550">Small popup. Clear toolbar badge. Fast per-tab refresh.</text>
+      ${chipRow(features, 0, 250)}
     </g>
-    <g transform="translate(878 88)">
-      <rect x="0" y="0" width="414" height="384" rx="34" fill="#ffffff" opacity="0.13"/>
-      <g transform="translate(38 44) scale(1.08)">
-        ${popupShot(scenario, { shadow: true })}
-      </g>
-      <g transform="translate(252 12)">
-        ${toolbarIcon(scenario, 1.2)}
-      </g>
+    <g transform="translate(902 96)">
+      <rect x="0" y="0" width="404" height="368" rx="28" fill="${palette.brand}" opacity="0.06"/>
+      <rect x="0" y="0" width="404" height="368" rx="28" fill="none" stroke="${palette.line}"/>
+      <g transform="translate(280 30)">${toolbarIcon(screenshots[1], 1.15)}</g>
+      <g transform="translate(39 92) scale(1.0)">${popupShot(screenshots[1], { shadow: true })}</g>
     </g>
   `);
 }
 
-function browserFrame(scenario) {
-  return `<g>
-    <rect x="0" y="0" width="560" height="520" rx="30" fill="${palette.surface}" filter="url(#shadow)"/>
-    <rect x="0" y="0" width="560" height="72" rx="30" fill="${palette.paperAlt}"/>
-    <rect x="0" y="42" width="560" height="30" fill="${palette.paperAlt}"/>
-    <circle cx="34" cy="35" r="8" fill="#df6051"/>
-    <circle cx="62" cy="35" r="8" fill="#d8a846"/>
-    <circle cx="90" cy="35" r="8" fill="#4d9a67"/>
-    <rect x="132" y="21" width="214" height="28" rx="14" fill="${palette.surface}"/>
-    <g transform="translate(448 18)">
-      ${toolbarIcon(scenario, 1)}
-    </g>
-    <g transform="translate(42 112)">
-      ${pagePreview(scenario)}
-    </g>
-    <g transform="translate(206 222)">
-      ${popupShot(scenario, { shadow: true })}
-    </g>
+// --- Shared building blocks ----------------------------------------------
+
+function brandLockup(x, y, scale) {
+  return `<g transform="translate(${x} ${y}) scale(${scale})">
+    <image href="${icons.active}" x="0" y="0" width="40" height="40"/>
+    <text x="52" y="28" fill="${palette.ink}" font-family="${FONT}" font-size="22" font-weight="800">Custom Auto Refresh</text>
   </g>`;
 }
 
-function pagePreview(scenario) {
-  return `<g opacity="0.95">
-    <rect width="210" height="34" rx="9" fill="${palette.paperAlt}"/>
-    <rect y="52" width="300" height="16" rx="8" fill="${palette.faint}"/>
-    <rect y="82" width="250" height="16" rx="8" fill="${palette.faint}"/>
-    <rect y="132" width="136" height="70" rx="16" fill="${scenario.active ? palette.greenSoft : palette.paperAlt}"/>
-    <rect x="154" y="132" width="136" height="70" rx="16" fill="${palette.amberSoft}"/>
-    <text x="20" y="174" fill="${palette.greenDark}" font-family="Inter,Arial,sans-serif" font-size="22" font-weight="850">${escapeXml(scenario.stat)}</text>
-    <text x="174" y="174" fill="#70431f" font-family="Inter,Arial,sans-serif" font-size="22" font-weight="850">Local</text>
+function chipRow(labels, x, y) {
+  let offset = x;
+  const chips = labels
+    .map((label) => {
+      const width = label.length * 8.4 + 42;
+      const chip = `<g transform="translate(${offset} ${y})">
+        <rect width="${width}" height="38" rx="19" fill="${palette.panel}" stroke="${palette.line}"/>
+        <circle cx="20" cy="19" r="3.4" fill="${palette.go}"/>
+        <text x="34" y="24" fill="${palette.ink}" font-family="${FONT}" font-size="14" font-weight="650">${escapeXml(label)}</text>
+      </g>`;
+      offset += width + 14;
+      return chip;
+    })
+    .join('');
+  return `<g>${chips}</g>`;
+}
+
+function toolbarIcon(scenario, scale) {
+  const badge = scenario.badge
+    ? `<g transform="translate(24 -7)">
+        <rect width="34" height="22" rx="11" fill="${palette.badge}"/>
+        <text x="17" y="16" text-anchor="middle" fill="#fff" font-family="${FONT}" font-size="13" font-weight="800">${escapeXml(scenario.badge)}</text>
+      </g>`
+    : '';
+  return `<g transform="scale(${scale})">
+    <image href="${scenario.active ? icons.active : icons.inactive}" x="0" y="0" width="38" height="38"/>
+    ${badge}
   </g>`;
 }
 
 function popupShot(scenario, options = {}) {
   const active = scenario.active;
-  const status = active ? 'Refreshing' : 'Idle';
-  const statusColor = active ? palette.green : palette.muted;
+  const filter = options.shadow ? ' filter="url(#cardShadow)"' : '';
+  const status = active
+    ? { label: 'Refreshing', dot: palette.go, text: palette.goInk, fill: palette.goSoft }
+    : { label: 'Idle', dot: palette.faint, text: palette.muted, fill: palette.panelAlt };
+  const statusWidth = status.label.length * 6 + 26;
   const footerLabel = active ? 'Next refresh' : 'Interval';
-  const unit = scenario.unit ?? 'sec';
-  const unitLabel = unit.toUpperCase();
   const footerValue = active ? scenario.remaining : durationLabel(scenario);
-  const filter = options.shadow ? ' filter="url(#shadow)"' : '';
 
   return `<g${filter}>
-    <rect width="326" height="202" rx="18" fill="#fbfcf8" stroke="${palette.faint}"/>
-    <g transform="translate(14 14)">
-      <image href="${active ? icons.active : icons.inactive}" x="0" y="0" width="32" height="32"/>
-      <text x="42" y="13" fill="${palette.ink}" font-family="Inter,Arial,sans-serif" font-size="14" font-weight="850">Custom Auto Refresh</text>
-      <rect x="42" y="20" width="${active ? 70 : 34}" height="15" rx="7.5" fill="${active ? palette.greenSoft : '#e7ece6'}"/>
-      <text x="${active ? 77 : 59}" y="31" text-anchor="middle" fill="${statusColor}" font-family="Inter,Arial,sans-serif" font-size="9.5" font-weight="820">${status}</text>
-      <g transform="translate(204 2)">
-        ${githubMark(0, 0, 14, palette.ink)}
-        <text x="20" y="12" fill="${palette.ink}" font-family="Inter,Arial,sans-serif" font-size="11" font-weight="850">Source Co...</text>
+    <rect width="326" height="222" rx="16" fill="${palette.panel}" stroke="${palette.line}"/>
+    <g transform="translate(14 16)">
+      <image href="${active ? icons.active : icons.inactive}" x="0" y="-2" width="32" height="32"/>
+      <text x="42" y="11" fill="${palette.ink}" font-family="${FONT}" font-size="14" font-weight="800">Custom Auto Refresh</text>
+      <g transform="translate(42 18)">
+        <rect width="${statusWidth}" height="16" rx="8" fill="${status.fill}"/>
+        <circle cx="10" cy="8" r="2.6" fill="${status.dot}"/>
+        <text x="18" y="11.5" fill="${status.text}" font-family="${FONT}" font-size="9.5" font-weight="700">${status.label}</text>
       </g>
-      <text x="0" y="66" fill="${palette.muted}" font-family="Inter,Arial,sans-serif" font-size="11" font-weight="750">Interval</text>
-      <rect x="0" y="74" width="298" height="40" rx="8" fill="${palette.surface}" stroke="${palette.faint}"/>
-      ${timerIcon(14, 90, 12, palette.muted)}
-      <text x="32" y="99" fill="${palette.ink}" font-family="Inter,Arial,sans-serif" font-size="17" font-weight="860">${escapeXml(scenario.interval)}</text>
-      <text x="280" y="99" text-anchor="end" fill="${palette.muted}" font-family="Inter,Arial,sans-serif" font-size="11" font-weight="900">${unitLabel}</text>
-      <rect x="0" y="126" width="145" height="40" rx="8" fill="${active ? '#dfe4dc' : palette.green}"/>
-      ${playIcon(52, 139, 13, active ? '#a8b3aa' : '#ffffff')}
-      <text x="82" y="151" text-anchor="middle" fill="${active ? '#a8b3aa' : '#ffffff'}" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="850">Start</text>
-      <rect x="153" y="126" width="145" height="40" rx="8" fill="${active ? palette.redSoft : '#dfe4dc'}"/>
-      ${stopIcon(202, 140, 11, active ? palette.red : '#a8b3aa')}
-      <text x="235" y="151" text-anchor="middle" fill="${active ? palette.red : '#a8b3aa'}" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="850">Stop</text>
-      <rect x="0" y="176" width="298" height="28" rx="8" fill="${palette.paperAlt}"/>
-      <text x="12" y="194" fill="${palette.muted}" font-family="Inter,Arial,sans-serif" font-size="11" font-weight="750">${footerLabel}</text>
-      <text x="286" y="194" text-anchor="end" fill="${palette.ink}" font-family="Inter,Arial,sans-serif" font-size="12" font-weight="860">${escapeXml(footerValue)}</text>
+      <g transform="translate(232 0)">
+        ${githubMark(0, 0, 13, palette.muted)}
+        <text x="18" y="11" fill="${palette.muted}" font-family="${FONT}" font-size="11" font-weight="650">Source</text>
+      </g>
+
+      <text x="0" y="58" fill="${palette.muted}" font-family="${FONT}" font-size="11" font-weight="650">Interval</text>
+      <rect x="0" y="66" width="298" height="40" rx="10" fill="${palette.panel}" stroke="${palette.line}"/>
+      ${timerIcon(13, 80, 13, palette.faint)}
+      <text x="34" y="91" fill="${palette.ink}" font-family="${FONT}" font-size="17" font-weight="800">${escapeXml(scenario.interval)}</text>
+      <rect x="246" y="73" width="44" height="26" rx="7" fill="${palette.panelAlt}"/>
+      <text x="268" y="90" text-anchor="middle" fill="${palette.muted}" font-family="${FONT}" font-size="11" font-weight="800">${escapeXml(scenario.unit.toUpperCase())}</text>
+
+      ${button(0, 118, active ? palette.panelAlt : palette.go, active ? palette.faint : '#ffffff', 'Start', 'play', !active)}
+      ${button(153, 118, active ? palette.stopSoft : palette.panelAlt, active ? palette.stopInk : palette.faint, 'Stop', 'stop', active)}
+
+      <rect x="0" y="170" width="298" height="30" rx="9" fill="${palette.panelAlt}"/>
+      <text x="12" y="189" fill="${palette.muted}" font-family="${FONT}" font-size="11" font-weight="600">${footerLabel}</text>
+      <text x="286" y="189" text-anchor="end" fill="${palette.ink}" font-family="${FONT}" font-size="12" font-weight="800">${escapeXml(footerValue)}</text>
     </g>
   </g>`;
 }
+
+function button(x, y, fill, fg, label, glyph, emphasised) {
+  const cx = x + 72.5;
+  const icon =
+    glyph === 'play'
+      ? playIcon(cx - 26, y + 13, 13, fg)
+      : stopIcon(cx - 24, y + 14, 11, fg);
+  return `<g${emphasised ? ' filter="url(#btnShadow)"' : ''}>
+    <rect x="${x}" y="${y}" width="145" height="40" rx="10" fill="${fill}"/>
+    ${icon}
+    <text x="${cx + 6}" y="${y + 25}" text-anchor="middle" fill="${fg}" font-family="${FONT}" font-size="13" font-weight="750">${label}</text>
+  </g>`;
+}
+
+// --- Glyphs ---------------------------------------------------------------
 
 function githubMark(x, y, size, color) {
   const scale = size / 98;
@@ -230,26 +269,68 @@ function githubMark(x, y, size, color) {
 }
 
 function timerIcon(x, y, size, color) {
-  return `<g transform="translate(${x} ${y})" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+  return `<g transform="translate(${x} ${y})" fill="none" stroke="${color}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
     <circle cx="${size / 2}" cy="${size / 2 + 1}" r="${size / 2 - 2}"/>
     <path d="M${size / 2} ${size / 2 + 1}v-${size / 4}"/>
-    <path d="M${size / 2} ${size / 2 + 1}l${size / 5}-${size / 7}"/>
     <path d="M${size / 2 - 2} 0h4"/>
   </g>`;
 }
 
 function playIcon(x, y, size, color) {
-  return `<path d="M${x} ${y}v${size}l${Math.round(size * 0.82)}-${size / 2}Z" fill="${color}"/>`;
+  return `<path d="M${x} ${y}v${size}l${Math.round(size * 0.86)}-${size / 2}Z" fill="${color}"/>`;
 }
 
 function stopIcon(x, y, size, color) {
-  return `<rect x="${x}" y="${y}" width="${size}" height="${size}" rx="2" fill="${color}"/>`;
+  return `<rect x="${x}" y="${y}" width="${size}" height="${size}" rx="2.5" fill="${color}"/>`;
 }
+
+// --- Layout primitives ----------------------------------------------------
+
+function headline(lines, x, y, size) {
+  return text(lines, x, y, size, palette.ink, 820, Math.round(size * 1.12));
+}
+
+function bodyText(lines, x, y, size) {
+  return text(lines, x, y, size, palette.muted, 550, Math.round(size * 1.42));
+}
+
+function text(lines, x, y, size, fill, weight, leading) {
+  const spans = lines
+    .map((line, index) => `<tspan x="${x}" dy="${index === 0 ? 0 : leading}">${escapeXml(line)}</tspan>`)
+    .join('');
+  return `<text x="${x}" y="${y}" fill="${fill}" font-family="${FONT}" font-size="${size}" font-weight="${weight}">${spans}</text>`;
+}
+
+function pageBackground(width, height) {
+  return `<rect width="${width}" height="${height}" fill="url(#bg)"/>
+  <rect width="${width}" height="${height}" fill="url(#glowBrand)"/>`;
+}
+
+function defs() {
+  return `<defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0.35" y2="1">
+      <stop offset="0" stop-color="${palette.bg}"/>
+      <stop offset="1" stop-color="${palette.bgDeep}"/>
+    </linearGradient>
+    <radialGradient id="glowBrand" cx="0.9" cy="0.08" r="0.85">
+      <stop offset="0" stop-color="${palette.brand}" stop-opacity="0.1"/>
+      <stop offset="0.55" stop-color="${palette.brand}" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="cardShadow" x="-25%" y="-25%" width="150%" height="160%">
+      <feDropShadow dx="0" dy="16" stdDeviation="22" flood-color="#1c2533" flood-opacity="0.13"/>
+    </filter>
+    <filter id="btnShadow" x="-40%" y="-40%" width="180%" height="220%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#1c2533" flood-opacity="0.2"/>
+    </filter>
+  </defs>`;
+}
+
+// --- Helpers --------------------------------------------------------------
 
 function durationLabel(scenario) {
   const value = Number(scenario.interval);
-  const unit = scenario.unit ?? 'sec';
-  const seconds = unit === 'ms' ? value / 1000 : unit === 'min' ? value * 60 : unit === 'hr' ? value * 3600 : value;
+  const seconds =
+    scenario.unit === 'ms' ? value / 1000 : scenario.unit === 'min' ? value * 60 : scenario.unit === 'hr' ? value * 3600 : value;
   return formatDurationMs(seconds * 1000);
 }
 
@@ -263,12 +344,10 @@ function formatDurationMs(ms) {
   if (ms < 1000) {
     return `${formatDecimal(ms / 1000, 1)}s`;
   }
-
   const totalSeconds = Math.ceil(ms / 1000);
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = totalSeconds % 60;
-
   if (hours > 0) {
     return `${hours}h ${minutes}m`;
   }
@@ -282,64 +361,8 @@ function formatDecimal(value, digits) {
   return value.toFixed(digits).replace(/0+$/, '').replace(/\.$/, '');
 }
 
-function toolbarIcon(scenario, scale = 1) {
-  const badge = scenario.badge
-    ? `<g transform="translate(25 -8)">
-        <rect width="35" height="25" rx="12.5" fill="${palette.green}"/>
-        <text x="17.5" y="18" text-anchor="middle" fill="#fff" font-family="Inter,Arial,sans-serif" font-size="15" font-weight="850">${escapeXml(scenario.badge)}</text>
-      </g>`
-    : '';
-  return `<g transform="scale(${scale})">
-    <image href="${scenario.active ? icons.active : icons.inactive}" x="0" y="0" width="38" height="38"/>
-    ${badge}
-  </g>`;
-}
-
-function metricCard(label, value, x) {
-  return `<g transform="translate(${x} 0)">
-    <rect width="140" height="74" rx="18" fill="${palette.surface}" stroke="${palette.faint}"/>
-    <text x="18" y="28" fill="${palette.muted}" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="750">${escapeXml(label)}</text>
-    <text x="18" y="56" fill="${palette.ink}" font-family="Inter,Arial,sans-serif" font-size="23" font-weight="870">${escapeXml(value)}</text>
-  </g>`;
-}
-
-function featurePill(text, x, dark = false) {
-  const fill = dark ? '#ffffff' : palette.surface;
-  const stroke = dark ? 'none' : palette.faint;
-  return `<g transform="translate(${x} 0)">
-    <rect width="${text.length * 11 + 34}" height="38" rx="19" fill="${fill}" stroke="${stroke}" opacity="${dark ? '0.96' : '1'}"/>
-    <text x="17" y="25" fill="${palette.ink}" font-family="Inter,Arial,sans-serif" font-size="14" font-weight="820">${escapeXml(text)}</text>
-  </g>`;
-}
-
-function headline(lines, x, y, size) {
-  return `<text x="${x}" y="${y}" fill="${palette.ink}" font-family="Inter,Arial,sans-serif" font-size="${size}" font-weight="880">
-    ${lines.map((line, index) => `<tspan x="${x}" dy="${index === 0 ? 0 : Math.round(size * 1.08)}">${escapeXml(line)}</tspan>`).join('')}
-  </text>`;
-}
-
-function bodyText(lines, x, y, size) {
-  return `<text x="${x}" y="${y}" fill="${palette.muted}" font-family="Inter,Arial,sans-serif" font-size="${size}" font-weight="650">
-    ${lines.map((line, index) => `<tspan x="${x}" dy="${index === 0 ? 0 : Math.round(size * 1.38)}">${escapeXml(line)}</tspan>`).join('')}
-  </text>`;
-}
-
-function backgroundBands(width, height) {
-  return `<defs>
-    <filter id="shadow" x="-30%" y="-30%" width="160%" height="170%">
-      <feDropShadow dx="0" dy="18" stdDeviation="20" flood-color="#243029" flood-opacity="0.18"/>
-    </filter>
-  </defs>
-  <rect width="${width}" height="${height}" fill="${palette.paper}"/>
-  <path d="M766 0h514v800H626z" fill="${palette.greenDark}"/>
-  <path d="M724 0h58L602 800h-58z" fill="${palette.amber}" opacity="0.28"/>
-  <path d="M666 0h32L518 800h-32z" fill="${palette.paperAlt}" opacity="0.9"/>`;
-}
-
 function svg(size, content) {
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size.width}" height="${size.height}" viewBox="0 0 ${size.width} ${size.height}">
-  ${content}
-</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size.width}" height="${size.height}" viewBox="0 0 ${size.width} ${size.height}">${content}</svg>`;
 }
 
 async function pngDataUri(path) {

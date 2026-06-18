@@ -4,6 +4,15 @@ import {
   normalizeIntervalSeconds
 } from './lib/refresh/interval';
 import type { RefreshRequest, RefreshResponse, RefreshState } from './lib/refresh/types';
+import {
+  ICON_ARROW,
+  ICON_BACKGROUND,
+  ICON_STROKE_WIDTH,
+  ICON_VIEWBOX,
+  REFRESH_ARC_PATHS,
+  REFRESH_HEAD_PATHS,
+  type IconState
+} from './lib/icon';
 
 interface StoredRefreshJob {
   tabId: number;
@@ -20,8 +29,6 @@ interface StoredState {
   lastIntervals: Record<string, number>;
 }
 
-type IconState = 'active' | 'inactive';
-
 interface ActionState {
   badgeText: string;
   icon: IconState;
@@ -30,12 +37,6 @@ interface ActionState {
 const ACTION_ICON_SIZES = [16, 24, 32] as const;
 const STORAGE_KEY = 'customAutoRefresh';
 const KEEP_ALIVE_PORT = 'custom-auto-refresh:keepAlive';
-const REFRESH_ICON_PATHS = [
-  'M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8',
-  'M3 3v5h5',
-  'M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16',
-  'M16 16h5v5'
-];
 const REFRESH_SETTLE_TIMEOUT_MS = 60000;
 const REFRESH_SETTLE_POLL_MS = 250;
 const REFRESH_COMPLETE_GRACE_MS = 750;
@@ -349,19 +350,22 @@ function createActionIconImageData(icon: IconState, size: number): ImageData {
     throw new Error('Could not create action icon.');
   }
 
-  context.scale(size / 32, size / 32);
-  context.fillStyle = icon === 'active' ? '#e74c3c' : '#344e5d';
+  context.scale(size / ICON_VIEWBOX, size / ICON_VIEWBOX);
+  context.fillStyle = ICON_BACKGROUND[icon];
   context.beginPath();
   context.arc(16, 16, 16, 0, Math.PI * 2);
   context.fill();
 
-  context.translate(4, 4);
-  context.strokeStyle = '#ffffff';
-  context.lineWidth = 2.75;
+  context.strokeStyle = ICON_ARROW;
+  context.fillStyle = ICON_ARROW;
+  context.lineWidth = ICON_STROKE_WIDTH;
   context.lineCap = 'round';
   context.lineJoin = 'round';
-  for (const path of REFRESH_ICON_PATHS) {
+  for (const path of REFRESH_ARC_PATHS) {
     context.stroke(new Path2D(path));
+  }
+  for (const path of REFRESH_HEAD_PATHS) {
+    context.fill(new Path2D(path));
   }
 
   return context.getImageData(0, 0, size, size);
