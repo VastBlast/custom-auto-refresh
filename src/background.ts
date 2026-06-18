@@ -45,6 +45,7 @@ const KEEP_ALIVE_PORT = 'custom-auto-refresh:keepAlive';
 const REFRESH_SETTLE_TIMEOUT_MS = 60000;
 const REFRESH_SETTLE_POLL_MS = 250;
 const REFRESH_COMPLETE_GRACE_MS = 750;
+const BADGE_TICK_MS = 250;
 
 // Jobs are held in memory for fast ticking and mirrored to storage so MV3
 // service-worker restarts can resume active refreshes.
@@ -269,17 +270,17 @@ function scheduleTick(): void {
     return;
   }
 
-  // Wake at the next due job, capped at one second so the badge countdown keeps
-  // moving without creating one timer per tab.
+  // Wake at the next due job, capped below one second so normal timer drift
+  // does not skip a visible badge countdown value.
   const now = Date.now();
-  let nextDelay = 1000;
+  let nextDelay = BADGE_TICK_MS;
   for (const job of jobs.values()) {
     if (job.refreshing) {
       continue;
     }
     nextDelay = Math.min(nextDelay, job.nextRefreshAt - now);
   }
-  nextDelay = Math.max(0, Math.min(1000, nextDelay));
+  nextDelay = Math.max(0, Math.min(BADGE_TICK_MS, nextDelay));
   scheduler = setTimeout(() => runQuietly(runTick()), nextDelay);
 }
 
