@@ -287,7 +287,7 @@
     <div class="tooltip tooltip-left" data-tip="GitHub">
       <a
         class="btn btn-ghost btn-sm h-8 min-h-8 gap-1.5 px-2 text-xs"
-        href="https://github.com/VastBlast/ChromeAutoRefresh"
+        href="https://github.com/VastBlast/custom-auto-refresh"
         target="_blank"
         rel="noreferrer"
         aria-label={t('sourceCode')}

@@ -24,7 +24,7 @@ function createManifest(target) {
     version: packageJson.version,
     description: '__MSG_extensionDescription__',
     default_locale: 'en',
-    homepage_url: 'https://github.com/VastBlast/ChromeAutoRefresh',
+    homepage_url: 'https://github.com/VastBlast/custom-auto-refresh',
     icons: {
       16: 'icons/inactive/icon16.png',
       32: 'icons/inactive/icon32.png',
