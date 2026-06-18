@@ -260,7 +260,7 @@
   }
 </script>
 
-<main data-theme="refresh" class="w-81.5 bg-base-100 p-3.5 text-base-content">
+<main data-theme="refresh" class="w-full bg-base-100 p-3.5 text-base-content">
   <header class="flex items-center justify-between gap-2">
     <div class="flex min-w-0 items-center gap-2">
       <img
