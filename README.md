@@ -6,9 +6,13 @@ Custom Auto Refresh is configurable and written in Svelte. It does not track use
 
 Refresh schedules and custom settings are stored locally by the browser, so active timers can recover when the extension context restarts.
 
+![Custom Auto Refresh promotional tile](assets/store/promotional/marquee-promo-tile.png)
+
 ## Install
 
 [![Install from Chrome Web Store](https://img.shields.io/badge/Install%20from-Chrome%20Web%20Store-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white)](https://chrome.google.com/webstore/detail/lpfhikbcgmboakfdiedcccfofbejaihd)
+[![Install from Firefox Add-ons](https://img.shields.io/badge/Install%20from-Firefox%20Add--ons-FF7139?style=for-the-badge&logo=firefoxbrowser&logoColor=white)](https://addons.mozilla.org/en-US/firefox/addon/custom-auto-refresh/)
+[![Install from Microsoft Edge Add-ons](https://img.shields.io/badge/Install%20from-Microsoft%20Edge%20Add--ons-0078D7?style=for-the-badge&logo=microsoftedge&logoColor=white)](https://microsoftedge.microsoft.com/addons/detail/ppgdhapocgbafpplfbknkjbmflphefed)
 
 ## Features
 
