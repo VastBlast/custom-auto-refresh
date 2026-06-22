@@ -168,14 +168,13 @@ function renderMarqueePromo() {
     <g transform="translate(96 132)">
       ${brandLockup(0, 0, 1.18)}
       <text x="2" y="150" fill="${palette.ink}" font-family="${FONT}" font-size="40" font-weight="800">Refresh any tab, on your schedule.</text>
-      <text x="2" y="196" fill="${palette.muted}" font-family="${FONT}" font-size="22" font-weight="550">Small popup. Clear toolbar badge. Fast per-tab refresh.</text>
+      <text x="2" y="196" fill="${palette.muted}" font-family="${FONT}" font-size="22" font-weight="550">Small popup. Advanced controls. Fast per-tab refresh.</text>
       ${chipRow(features, 0, 250)}
     </g>
     <g transform="translate(902 96)">
       <rect x="0" y="0" width="404" height="368" rx="28" fill="${palette.brand}" opacity="0.06"/>
       <rect x="0" y="0" width="404" height="368" rx="28" fill="none" stroke="${palette.line}"/>
-      <g transform="translate(280 30)">${toolbarIcon(screenshots[1], 1.15)}</g>
-      <g transform="translate(39 92) scale(1.0)">${popupShot(screenshots[1], { shadow: true })}</g>
+      <g transform="translate(39 55) scale(1.0)">${popupShot(screenshots[1], { shadow: true })}</g>
     </g>
   `);
 }
@@ -222,12 +221,13 @@ function toolbarIcon(scenario, scale) {
 function popupShot(scenario, options = {}) {
   const filter = options.shadow ? ' filter="url(#cardShadow)"' : '';
   return `<g${filter}>
-    <rect width="326" height="222" rx="16" fill="${palette.panel}" stroke="${palette.line}"/>
+    <rect width="326" height="258" rx="16" fill="${palette.panel}" stroke="${palette.line}"/>
     <g transform="translate(14 16)">
       ${popupHeader(scenario)}
       ${intervalRow(scenario)}
-      ${actionButtons(scenario.active, 118)}
-      ${footerPill(scenario, 170)}
+      ${advancedToggle(120, false)}
+      ${actionButtons(scenario.active, 150)}
+      ${footerPill(scenario, 202)}
     </g>
   </g>`;
 }
@@ -239,7 +239,7 @@ function advancedPopupShot(scenario) {
     <g transform="translate(14 16)">
       ${popupHeader(scenario)}
       ${intervalRow(scenario)}
-      ${advancedToggle(120)}
+      ${advancedToggle(120, true)}
       ${advancedPanel(scenario.advanced, 150)}
       ${actionButtons(scenario.active, 360)}
       ${footerPill(scenario, 412)}
@@ -288,11 +288,11 @@ function footerPill(scenario, y) {
     <text x="286" y="${y + 19}" text-anchor="end" fill="${palette.ink}" font-family="${FONT}" font-size="12" font-weight="800">${escapeXml(value)}</text>`;
 }
 
-function advancedToggle(y) {
+function advancedToggle(y, expanded) {
   return `<g transform="translate(0 ${y})">
     ${slidersGlyph(0, 0, palette.muted)}
     <text x="22" y="11" fill="${palette.ink}" font-family="${FONT}" font-size="12" font-weight="700">Advanced</text>
-    ${chevronGlyph(288, 4, palette.muted, true)}
+    ${chevronGlyph(288, 4, palette.muted, expanded)}
   </g>`;
 }
 
