@@ -44,8 +44,7 @@ function createManifest(target) {
       service_worker: 'assets/background.js',
       type: 'module'
     },
-    permissions: ['scripting', 'storage'],
-    host_permissions: ['<all_urls>'],
+    permissions: ['storage'],
     content_security_policy: {
       extension_pages: "default-src 'self'; script-src 'self'; object-src 'none'; img-src 'self' data:; style-src 'self'"
     }
@@ -65,6 +64,8 @@ function createManifest(target) {
       scripts: ['assets/background.js'],
       type: 'module'
     };
+  } else {
+    manifest.minimum_chrome_version = '110';
   }
 
   return manifest;

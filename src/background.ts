@@ -43,7 +43,7 @@ interface ActionState {
 
 const ACTION_ICON_SIZES = [16, 24, 32] as const;
 const STORAGE_KEY = 'customAutoRefresh';
-const KEEP_ALIVE_PORT = 'custom-auto-refresh:keepAlive';
+const KEEP_ALIVE_INTERVAL_MS = 20000;
 const REFRESH_SETTLE_TIMEOUT_MS = 60000;
 const REFRESH_SETTLE_POLL_MS = 250;
 const REFRESH_COMPLETE_GRACE_MS = 750;
@@ -62,6 +62,7 @@ let lastIntervalMs: number | null = null;
 let legacyLastIntervals: Record<string, number> = {};
 let lastOptions: RefreshOptions = DEFAULT_OPTIONS;
 let scheduler: ReturnType<typeof setTimeout> | undefined;
+let keepAliveTimer: ReturnType<typeof setInterval> | undefined;
 let initialized: Promise<void> | undefined;
 
 runQuietly(initialize());
@@ -74,24 +75,6 @@ chrome.runtime.onMessage.addListener((message: RefreshRequest, _sender, sendResp
       sendResponse({ ok: false, error: message } satisfies RefreshResponse<RefreshState>);
     });
   return true;
-});
-
-chrome.runtime.onConnect.addListener((port) => {
-  if (port.name !== KEEP_ALIVE_PORT) {
-    return;
-  }
-
-  // MV3 service workers can suspend between timers. A long-lived port from a
-  // normal web page keeps this worker available for accurate badge updates and
-  // scheduled reloads; reconnect before Chrome's five-minute port limit.
-  const tabId = port.sender?.tab?.id;
-  const timer = setTimeout(() => port.disconnect(), 250000);
-  port.onDisconnect.addListener(() => {
-    clearTimeout(timer);
-    if (jobs.size > 0) {
-      runQuietly(connectKeepAlive(tabId));
-    }
-  });
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => {
@@ -114,9 +97,6 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.status === 'loading' || changeInfo.status === 'complete' || tab.status === 'complete') {
     runQuietly(updateAction(tabId));
   }
-  if (changeInfo.status === 'complete') {
-    runQuietly(connectKeepAlive(tabId));
-  }
 });
 
 async function initialize(): Promise<void> {
@@ -133,9 +113,6 @@ async function initialize(): Promise<void> {
     }
     await Promise.all(Array.from(jobs.keys(), (tabId) => updateAction(tabId)));
     scheduleTick();
-    if (jobs.size > 0) {
-      await connectKeepAlive();
-    }
   })();
   return initialized;
 }
@@ -178,7 +155,6 @@ async function startActiveTab(intervalSeconds: number, rawOptions: unknown): Pro
   await saveState();
   await updateAction(tab.id);
   rescheduleTick();
-  runQuietly(connectKeepAlive(tab.id));
   return getStateForTab(tab);
 }
 
@@ -273,6 +249,7 @@ async function refreshTab(job: RefreshJob): Promise<void> {
 }
 
 function scheduleTick(): void {
+  updateKeepAlive();
   if (scheduler || jobs.size === 0) {
     return;
   }
@@ -416,51 +393,20 @@ function createActionIconImageData(icon: IconState, size: number): ImageData {
   return context.getImageData(0, 0, size, size);
 }
 
-async function connectKeepAlive(tabId?: number): Promise<void> {
-  const tabIds = tabId === undefined ? Array.from(jobs.keys()) : jobs.has(tabId) ? [tabId] : [];
-  const jobTabs = await Promise.all(tabIds.map((id) => getTab(id)));
-  if (await connectToFirstAvailableTab(jobTabs)) {
+function updateKeepAlive(): void {
+  if (jobs.size === 0) {
+    clearInterval(keepAliveTimer);
+    keepAliveTimer = undefined;
     return;
   }
 
-  // Some refresh targets reject script injection. A fallback HTTP(S) tab can
-  // still hold the keep-alive port; refresh jobs themselves remain tab-scoped.
-  const fallbackTabs = await queryInjectableTabs();
-  await connectToFirstAvailableTab(fallbackTabs);
-}
-
-async function connectToFirstAvailableTab(tabs: Array<chrome.tabs.Tab | undefined>): Promise<boolean> {
-  for (const tab of tabs) {
-    if (tab?.id === undefined) {
-      continue;
-    }
-    if (await injectKeepAlive(tab.id)) {
-      return true;
-    }
-  }
-  return false;
-}
-
-async function injectKeepAlive(tabId: number): Promise<boolean> {
-  try {
-    await chromeCall<chrome.scripting.InjectionResult<void>[]>((resolve) =>
-      chrome.scripting.executeScript(
-        {
-          target: { tabId },
-          func: connectPort,
-          args: [KEEP_ALIVE_PORT]
-        },
-        resolve
-      )
-    );
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function connectPort(portName: string): void {
-  chrome.runtime.connect({ name: portName });
+  // Chrome 110+ resets the worker's idle timeout on extension API calls.
+  // Keep precise timers alive even when a long countdown's badge is unchanged.
+  // Share one timer across all jobs: reconnecting page ports on navigation
+  // accumulated connections and script injections with every reload.
+  keepAliveTimer ??= setInterval(() => {
+    runQuietly(chromeCall<chrome.runtime.PlatformInfo>((resolve) => chrome.runtime.getPlatformInfo(resolve)));
+  }, KEEP_ALIVE_INTERVAL_MS);
 }
 
 function getActiveTab(): Promise<chrome.tabs.Tab | undefined> {
@@ -469,10 +415,6 @@ function getActiveTab(): Promise<chrome.tabs.Tab | undefined> {
 
 function getTab(tabId: number): Promise<chrome.tabs.Tab | undefined> {
   return chromeCall<chrome.tabs.Tab>((resolve) => chrome.tabs.get(tabId, resolve)).catch(() => undefined);
-}
-
-function queryInjectableTabs(): Promise<chrome.tabs.Tab[]> {
-  return chromeCall((resolve) => chrome.tabs.query({ url: ['http://*/*', 'https://*/*'] }, resolve));
 }
 
 function reloadTab(tabId: number, bypassCache: boolean): Promise<void> {
