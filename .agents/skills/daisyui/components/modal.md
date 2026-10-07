@@ -1,7 +1,7 @@
-### modal
-Modal is used to show a dialog or a box when you click a button
+### Modal
+A modal shows a dialog or box when the user clicks a button.
 
-[modal docs](https://daisyui.com/components/modal/)
+[Modal documentation](https://daisyui.com/components/modal/)
 
 #### Class names
 - component: `modal`
@@ -10,7 +10,7 @@ Modal is used to show a dialog or a box when you click a button
 - placement: `modal-top`, `modal-middle`, `modal-bottom`, `modal-start`, `modal-end`
 
 #### Syntax
-Using HTML dialog element
+If possible, use the HTML `dialog` element:
 ```html
 <button onclick="my_modal.showModal()">Open modal</button>
 <dialog id="my_modal" class="modal">
@@ -18,8 +18,49 @@ Using HTML dialog element
   <form method="dialog" class="modal-backdrop"><button>close</button></form>
 </dialog>
 ```
+To close the modal when the user clicks outside it:
+```html
+<button class="btn" onclick="my_modal.showModal()">open modal</button>
+<dialog id="my_modal" class="modal">
+  <div class="modal-box">
+    <h3 class="text-lg font-bold">Hello!</h3>
+    <p class="py-4">Press ESC key or click outside to close</p>
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button>close</button>
+  </form>
+</dialog>
+```
 
-Using checkbox (legacy)
+
+If the modal must not keep keyboard navigation inside it, use the popover API:
+```html
+<button popovertarget="my_modal" class="btn">Open modal</button>
+<div class="modal" popover id="my_modal">
+  <div class="modal-box">
+    {CONTENT}
+    <div class="modal-action">
+      <button popovertarget="my_modal" popovertargetaction="hide">close</button>
+    </div>
+  </div>
+</div>
+```
+To close the modal when the user clicks outside it:
+```html
+<button class="btn" popovertarget="my_modal">Open</button>
+
+<div class="modal" id="my_modal" popover>
+  <div class="modal-box">
+    <h3 class="font-bold text-lg">Hello!</h3>
+    <p class="py-4">Press ESC key or click the button below to close</p>
+  </div>
+  <div class="modal-backdrop">
+    <button popovertarget="my_modal" popovertargetaction="hide">close</button>
+  </div>
+</div>
+```
+
+Checkbox. This method is legacy:
 ```html
 <label for="my-modal" class="btn">Open modal</label>
 <input type="checkbox" id="my-modal" class="modal-toggle" />
@@ -29,7 +70,7 @@ Using checkbox (legacy)
 </div>
 ```
 
-Using anchor links (legacy)
+Anchor links. This method is legacy:
 ```html
 <a href="#my-modal" class="btn">Open modal</a>
 <div class="modal" id="my-modal">
@@ -38,7 +79,6 @@ Using anchor links (legacy)
 ```
 
 #### Rules
-- {MODIFIER} is optional and can have one of the modifier/placement class names
-- Add `tabindex="0"` to make modal focusable
-- Use unique IDs for each modal
-- For HTML dialog element modals, add `<form method="dialog">` for closing the modal with submit
+- `{MODIFIER}` is optional. It can include one modifier class name and one placement class name.
+- Use a unique HTML ID for each modal.
+- For an HTML `dialog` element, add `<form method="dialog">`. This lets the submit action close the modal.

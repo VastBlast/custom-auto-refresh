@@ -1,12 +1,13 @@
-### range
-Range slider is used to select a value by sliding a handle
+### Range
+Move a range-slider handle to select a value.
 
-[range docs](https://daisyui.com/components/range/)
+[Range documentation](https://daisyui.com/components/range/)
 
 #### Class names
 - component: `range`
 - color: `range-neutral`, `range-primary`, `range-secondary`, `range-accent`, `range-success`, `range-warning`, `range-info`, `range-error`
 - size: `range-xs`, `range-sm`, `range-md`, `range-lg`, `range-xl`
+- direction: `range-vertical` (vertical slider)
 
 #### Syntax
 ```html
@@ -14,5 +15,6 @@ Range slider is used to select a value by sliding a handle
 ```
 
 #### Rules
-- {MODIFIER} is optional and can have one of each color/size class names
-- You must specify `min` and `max` attributes
+- `{MODIFIER}` is optional. It can include one color class name and one size class name.
+- For a vertical slider, use `range-vertical`.
+- You must specify the `min` and `max` attributes.

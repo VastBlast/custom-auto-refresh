@@ -1,46 +1,69 @@
 ---
 name: daisyui-colors
-description: MANDATORY color usage rules for daisyUI 5
+description: Color rules that you must use with daisyUI 5
 ---
 
 ## daisyUI 5 colors
 
 ### daisyUI color names
-- `primary`: Primary brand color, The main color of your brand
-- `primary-content`: Foreground content color to use on primary color
-- `secondary`: Secondary brand color, The optional, secondary color of your brand
-- `secondary-content`: Foreground content color to use on secondary color
-- `accent`: Accent brand color, The optional, accent color of your brand
-- `accent-content`: Foreground content color to use on accent color
-- `neutral`: Neutral dark color, For not-saturated parts of UI
-- `neutral-content`: Foreground content color to use on neutral color
-- `base-100`:-100 Base surface color of page, used for blank backgrounds
-- `base-200`:-200 Base color, darker shade, to create elevations
-- `base-300`:-300 Base color, even more darker shade, to create elevations
-- `base-content`: Foreground content color to use on base color
-- `info`: Info color, For informative/helpful messages
-- `info-content`: Foreground content color to use on info color
-- `success`: Success color, For success/safe messages
-- `success-content`: Foreground content color to use on success color
-- `warning`: Warning color, For warning/caution messages
-- `warning-content`: Foreground content color to use on warning color
-- `error`: Error color, For error/danger/destructive messages
-- `error-content`: Foreground content color to use on error color
+- `primary`: The main brand color.
+- `primary-content`: Foreground content color for use on `primary`.
+- `secondary`: An optional secondary brand color.
+- `secondary-content`: Foreground content color for use on `secondary`.
+- `accent`: An optional accent brand color.
+- `accent-content`: Foreground content color for use on `accent`.
+- `neutral`: A dark neutral color for UI areas that do not use saturated colors.
+- `neutral-content`: Foreground content color for use on `neutral`.
+- `base-100`: The page base-surface color for blank backgrounds.
+- `base-200`: A darker base shade that gives elevation.
+- `base-300`: A still darker base shade that gives more elevation.
+- `base-content`: Foreground content color for use on a base color.
+- `info`: Color for information and help messages.
+- `info-content`: Foreground content color for use on `info`.
+- `success`: Color for success and safe-state messages.
+- `success-content`: Foreground content color for use on `success`.
+- `warning`: Color for warning and caution messages.
+- `warning-content`: Foreground content color for use on `warning`.
+- `error`: Color for error, danger, and destructive-action messages.
+- `error-content`: Foreground content color for use on `error`.
 
 ### daisyUI color rules
-1. daisyUI adds semantic color names to Tailwind CSS colors
-2. daisyUI color names can be used in utility classes, like other Tailwind CSS color names. For example, `bg-primary` will use the primary color for the background
-3. daisyUI color names include variables as value so they can change based on the theme
-4. There's no need to use `dark:` for daisyUI color names
-5. Ideally only daisyUI color names should be used for colors so the colors can change automatically based on the theme
-6. If a Tailwind CSS color name (like `red-500`) is used, it will be the same red color on all themes
-7. If a daisyUI color name (like `primary`) is used, it will change color based on the theme
-8. Using Tailwind CSS color names for text colors should be avoided because Tailwind CSS color `text-gray-800` on `bg-base-100` would be unreadable on a dark theme - because on dark theme, `bg-base-100` is a dark color
-9. `*-content` colors should have a good contrast compared to their associated colors
-10. Use `base-*` colors for majority of the page. Use the default variant for all elements. Use `primary` color once only, for the most important element on the page.
+1. daisyUI adds semantic color names to the Tailwind CSS colors.
+2. Use daisyUI color names in utility classes as you use other Tailwind CSS color names. For example, `bg-primary` uses the primary color for the background.
+3. The value of each daisyUI color name is a variable. Thus, the color can change with the theme.
+4. Do not use `dark:` with daisyUI color names.
+5. If possible, use only daisyUI color names. This lets colors change automatically with the theme.
+6. If you use a Tailwind CSS color name such as `red-500`, its color stays the same in all themes.
+7. If you use a daisyUI color name such as `primary`, its color changes with the theme.
+8. Avoid Tailwind CSS color names for text. For example, `text-gray-800` on `bg-base-100` becomes unreadable in a dark theme because `bg-base-100` is dark.
+9. `*-content` colors must have clear contrast with their related colors.
+10. Use `base-*` colors for most of the page. Use the default variant for all elements. Use `primary` only for the most important element on the page. Use it only once.
+11. In rare cases, you can use a Tailwind CSS color if content must keep the same color in all themes. For example, you can use `text-red-500` instead of `text-error`. For an SVG icon or chart, a fixed color can be necessary.
+
+### Enable and apply themes
+
+The default configuration enables `light` and `dark`. In the daisyUI plugin, select specified themes, all themes, or no built-in themes:
+
+```css
+@plugin "daisyui" {
+  themes: light --default, dark --prefersdark, cupcake;
+}
+```
+
+- Use `themes: all;` to enable all built-in themes.
+- Use `themes: false;` to disable all built-in themes. Usually, do this before you define only custom themes.
+- Add `data-theme="THEME_NAME"` to `<html>` or a nested element. You can nest themes with no depth limit.
+
+```html
+<html data-theme="dark">
+  <section data-theme="light">
+    <div data-theme="retro">Nested theme</div>
+  </section>
+</html>
+```
 
 ### daisyUI custom theme with custom colors
-A CSS file with Tailwind CSS, daisyUI and a custom daisyUI theme looks like this:
+A CSS file that contains Tailwind CSS, daisyUI, and a custom daisyUI theme has this structure:
 ```css
 @import "tailwindcss";
 @plugin "daisyui";
@@ -76,18 +99,48 @@ A CSS file with Tailwind CSS, daisyUI and a custom daisyUI theme looks like this
   --radius-box: 0.5rem; /* border radius of boxes (card, modal, alert) */
   /* preferred values for --radius-* : 0rem, 0.25rem, 0.5rem, 1rem, 2rem */
 
-  --size-selector: 0.25rem; /* base size of selectors (checkbox, toggle, badge). Value must be 0.25rem unless we intentionally want bigger selectors. In so it can be 0.28125 or 0.3125. If we intentionally want smaller selectors, it can be 0.21875 or 0.1875 */
-  --size-field: 0.25rem; /* base size of fields (button, input, select, tab). Value must be 0.25rem unless we intentionally want bigger fields. In so it can be 0.28125 or 0.3125. If we intentionally want smaller fields, it can be 0.21875 or 0.1875 */
+  --size-selector: 0.25rem; /* base size of selectors (checkbox, toggle, badge). Value must be 0.25rem unless we intentionally want bigger selectors. If so it can be 0.28125 or 0.3125. If we intentionally want smaller selectors, it can be 0.21875 or 0.1875 */
+  --size-field: 0.25rem; /* base size of fields (button, input, select, tab). Value must be 0.25rem unless we intentionally want bigger fields. If so it can be 0.28125 or 0.3125. If we intentionally want smaller fields, it can be 0.21875 or 0.1875 */
 
-  --border: 1px; /* border size. Value must be 1px unless we intentionally want thicker borders. In so it can be 1.5px or 2px. If we intentionally want thinner borders, it can be 0.5px */
+  --border: 1px; /* border size. Value must be 1px unless we intentionally want thicker borders. If so it can be 1.5px or 2px. If we intentionally want thinner borders, it can be 0.5px */
 
-  --depth: 1; /* only 0 or 1 – Adds a shadow and subtle 3D depth effect to components */
+  --depth: 1; /* only 0 or 1 - Adds a shadow and subtle 3D depth effect to components */
   --noise: 0; /* only 0 or 1 - Adds a subtle noise (grain) effect to components */
 }
 ```
 #### Rules
-- All CSS variables above are required
-- Colors can be OKLCH or hex or other formats
-- If you're generating a custom theme, do not include the comments from the example above. Just provide the code.
+- You must include all CSS variables in the example.
+- Colors can use OKLCH, hex, or another format.
+- If you generate a custom theme, do not include the comments from the example. Give only the code.
 
-People can use https://daisyui.com/theme-generator/ visual tool to create their own theme.
+Optional: Use the visual tool at https://daisyui.com/theme-generator/ to make a custom theme.
+
+### Change a built-in theme
+
+Use the built-in theme name. Change only the necessary values. daisyUI inherits the other values:
+
+```css
+@plugin "daisyui/theme" {
+  name: "light";
+  default: true;
+  --color-primary: blue;
+  --color-secondary: teal;
+}
+```
+
+For a custom CDN theme, define the same variables in a selector. The selector must match the selected `data-theme` and theme controller:
+
+```css
+:root:has(input.theme-controller[value=mytheme]:checked),
+[data-theme="mytheme"] {
+  color-scheme: light;
+  --color-primary: oklch(55% 0.3 240);
+  /* define the remaining custom-theme variables */
+}
+```
+
+To make the Tailwind `dark:` variant follow one or more daisyUI themes, define a custom variant:
+
+```css
+@custom-variant dark (&:where([data-theme=night], [data-theme=night] *));
+```
