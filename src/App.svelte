@@ -31,11 +31,12 @@
 
   const CLOCK_TICK_MS = 100;
   const STATE_POLL_MS = 500;
+  // Preserve millisecond precision when switching units.
   const INTERVAL_UNITS = [
     { id: 'sec', label: 'sec', seconds: 1, step: '0.001', decimals: 3 },
     { id: 'ms', label: 'ms', seconds: 0.001, step: '1', decimals: 0 },
-    { id: 'min', label: 'min', seconds: 60, step: '0.001', decimals: 3 },
-    { id: 'hr', label: 'hr', seconds: 3600, step: '0.001', decimals: 4 }
+    { id: 'min', label: 'min', seconds: 60, step: '0.001', decimals: 6 },
+    { id: 'hr', label: 'hr', seconds: 3600, step: '0.001', decimals: 7 }
   ] as const;
 
   type IntervalUnit = (typeof INTERVAL_UNITS)[number]['id'];
@@ -192,10 +193,8 @@
   function formatIntervalForUnit(seconds: number, unit: IntervalUnit): string {
     const option = getIntervalUnit(unit);
     const value = seconds / option.seconds;
-    if (Number.isInteger(value)) {
-      return String(value);
-    }
-    return value.toFixed(option.decimals).replace(/0+$/, '').replace(/\.$/, '');
+    const formatted = value.toFixed(option.decimals);
+    return option.decimals === 0 ? formatted : formatted.replace(/0+$/, '').replace(/\.$/, '');
   }
 
   function getErrorMessage(caught: unknown): string {

@@ -219,6 +219,9 @@ async function refreshTab(job: RefreshJob): Promise<void> {
   try {
     await updateAction(job.tabId);
     const tab = await getTab(job.tabId);
+    if (jobs.get(job.tabId) !== job) {
+      return;
+    }
     if (!tab) {
       await stopTab(job.tabId);
       return;
@@ -226,7 +229,7 @@ async function refreshTab(job: RefreshJob): Promise<void> {
 
     await reloadAndWaitForTabSettled(job.tabId, job.options.bypassCache);
     const current = jobs.get(job.tabId);
-    if (current) {
+    if (current === job) {
       current.refreshCount += 1;
       const completedAt = Date.now();
       if (reachedLimit(current, completedAt)) {
@@ -237,10 +240,12 @@ async function refreshTab(job: RefreshJob): Promise<void> {
       await saveState();
     }
   } catch {
-    await stopTab(job.tabId);
+    if (jobs.get(job.tabId) === job) {
+      await stopTab(job.tabId);
+    }
   } finally {
     const current = jobs.get(job.tabId);
-    if (current) {
+    if (current === job) {
       current.refreshing = false;
       await updateAction(job.tabId);
       rescheduleTick();
